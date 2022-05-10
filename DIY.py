@@ -15,12 +15,14 @@ import h5py
 
 _S      = 1
 
-_MSUN   = 1.98855e30 #kg
+#_MSUN   = 1.98855e30 #kg
+_MSUN   = 1.0
+_KG     = 1/1.98855e30
 _PC     = 3.08567758149137e16 #m
 _CM     = 1e-2
 _YR     = 365.25 * 24 * 3600*_S #s
 _MYR    = 1e6*_YR
-_GEV    = 1.79e-27
+_GEV    = 1.79e-27*_KG
 _KM     = 1e3
 
 
@@ -30,8 +32,8 @@ _C      = 3e8
 
 theta = 1/(2 - 2**(1/3))
 
-TEST_SNAP_DIR = "/code/test_snapshots"
-TEST_FIG_DIR = "/code/test_figures"
+TEST_SNAP_DIR = "test_snapshots"
+TEST_FIG_DIR = "test_figures"
 
 class CentralPotential():
     def __init__(self, M = 1e3*_MSUN):
@@ -60,7 +62,7 @@ def calc_orbital_elements(x, v, M_tot):
 
     
 class particles():
-    def __init__(self, M_1, M_2, N_DM=2, M_DM = 0):
+    def __init__(self, M_1, M_2, N_DM=2, M_DM = 0, dynamic_BH=True, r_soft=0):
     
         self.M_1 = M_1
         self.M_2 = M_2
@@ -71,49 +73,108 @@ class particles():
         #self.r_isco1 = 6*_G*M_1/_C**2
         #self.r_isco2 = 6*_G*M_2/_C**2
         
+        #self.r_isco2 = 10*1.8849555921538754e-10*_PC
+        self.r_isco2 = r_soft
+        
         self.r_isco1  = 0
-        self.r_isco2  = 0
+        #self.r_isco2  = 0
     
-        self.xBH = np.zeros(3)
-        self.vBH = np.zeros(3)
+        self.xBH1 = np.zeros((1,3), dtype=np.float64)
+        self.vBH1 = np.zeros((1,3), dtype=np.float64)
+        
+        self.xBH2 = np.zeros((1,3), dtype=np.float64)
+        self.vBH2 = np.zeros((1,3), dtype=np.float64)
         
         self.xDM = np.zeros((N_DM, 3))
         self.vDM = np.zeros((N_DM, 3))
         
         self.BH = CentralPotential(M_1)
     
-        self.dvdtBH = None
+        self.dvdtBH1 = None
+        self.dvdtBH2 = None
         self.dxdtDM = None
+        
+        self.dynamic_BH = dynamic_BH
         
     def update_acc(self):
         #Initial accelerations
-        dx  = (self.xBH - self.xDM)
-        rsq = np.atleast_2d(np.sum(dx**2, axis=-1) + self.r_isco2**2).T
-        acc = -_G*dx/rsq**1.5
+        dx  = (self.xDM - self.xBH2)
+        r = norm(dx)
+        #if (np.sum(r < self.r_isco2)):
+        #    print("Close encounter!")
+        rsq = np.atleast_2d(r**2 + 0.0*self.r_isco2**2).T
+        acc_DM2 = -_G*self.M_2*dx/rsq**1.5
+        
+        #print((rsq < self.r_isco2**2).shape)
+        inds = rsq < self.r_isco2**2
+        
+        acc_DM2[inds.flatten(),:] *= 0.0
     
-        self.dvdtBH = 1.0*self.BH.get_gravity_at_point(self.xBH, eps=self.r_isco1) + np.sum(self.M_DM*acc, axis=0)
-        self.dvdtDM = 1.0*self.BH.get_gravity_at_point(self.xDM, eps=self.r_isco1) - self.M_2*acc
-   
+        dx = self.xDM - self.xBH1
+        acc_DM1 = self.BH.get_gravity_at_point(dx, eps=self.r_isco1)
+        
+        dx = self.xBH2 - self.xBH1
+        acc_BH = self.BH.get_gravity_at_point(dx, eps=self.r_isco1)
+    
+        if (self.dynamic_BH):
+            self.dvdtBH1 = -(self.M_2/self.M_1)*acc_BH
+        else:
+            self.dvdtBH1 = 0.0
+            
+        self.dvdtBH2 = acc_BH - (1/self.M_2)*np.sum(self.M_DM*acc_DM2, axis=0)
+        self.dvdtDM  = acc_DM1 + acc_DM2
+
         
     def xstep(self, h):
-        self.xBH += self.vBH*h
-        #self.xDM += self.vDM*h
+        if (self.dynamic_BH):
+            self.xBH1 += self.vBH1*h
+        self.xBH2 += self.vBH2*h
+        self.xDM += self.vDM*h
 
-        
+
     def vstep(self, h):
-        #self.update_acc()
-        self.dvdtBH = -_G*self.M_1*self.xBH/norm(self.xBH)**3
-        self.vBH += self.dvdtBH*h
-        #self.vDM += self.dvdtDM*h
+        self.update_acc()
+        #self.dvdtBH1 = -_G*self.M_1*self.xBH/norm(self.xBH)**3
+        if (self.dynamic_BH):
+            self.vBH1 += self.dvdtBH1*h
+        self.vBH2 += self.dvdtBH2*h
+        self.vDM += self.dvdtDM*h
 
         
     
     
-def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, method = "DKD"):
+def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, method = "DKD", dynamic_BH = True):
+
+ 
+    #Initialise BH properties
+    r_i = a_i * ( 1 + e_i)
+    
+    if (dynamic_BH):
+        M_tot = M_1 + M_2
+    else:
+        M_tot = M_1
+    mu = _G*M_tot
+    v_i = np.sqrt( mu * (2.0/r_i - 1.0/a_i) )
+ 
+    # Simulation parameters
+    N_step = 10000
+    N_orb = 100
+    
+    T_orb = 2 * np.pi * np.sqrt(a_i ** 3 / (_G*M_tot))
+    t_end = N_orb*T_orb
+    dt = t_end/N_step
+    print("> Timestep [s]:", dt)
+    
+    #N = 0
+    #r_soft = (N**2*dt**2*_G*M_2)**(1/3) #DO NOT CHANGE _ THIS SEEMS TO WORK!!!
+    #r_soft = 2*np.pi*N*a_i*dt/T_orb
+    print("> Drift per timestep [pc]: ", v_i*dt/_PC)
+    #r_soft = 10000*6*_G*M_2/_C**2
+    r_soft = v_i*dt
+    print("> Softening length [pc]: ",r_soft/_PC)
     
     # Initialise central potential and binary orbit
     SpikeDF = DF.SpikeDistribution(M_1/_MSUN, rho_6=1e15, gamma_sp=gamma)
- 
     
     if (N_DM > 0):
         M_spike = SpikeDF.M_DM_ini(r_max/_PC)*_MSUN
@@ -122,24 +183,34 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
         N_DM = 2 #Keep N_DM = 2 so that all the arrays work as expected...
         M_DM = 0.0
         
-    p = particles(M_1, M_2, N_DM=N_DM, M_DM=M_DM)
+    p = particles(M_1, M_2, N_DM=N_DM, M_DM=M_DM, dynamic_BH=dynamic_BH, r_soft=r_soft)
         
-    #Initialise BH properties
-    r_i = a_i * ( 1 + e_i)
     
-    M_tot = M_1 + M_2
-    mu = _G*M_tot
-    v_i = np.sqrt( mu * (2/r_i - 1/a_i) )
-    
+
     
     #-----------------------------
     
-    p.xBH = np.atleast_2d([r_i,   0, 0])
-    p.vBH = np.atleast_2d([0.0, v_i, 0])
+    if (dynamic_BH):
+        factor = M_2/M_tot
+    else:
+        factor = 0
+        
     
-    elements = calc_orbital_elements(p.xBH, p.vBH, M_tot)
+    p.xBH1[:] = np.atleast_2d([-r_i*factor,   0, 0])
+    p.xBH2[:] = np.atleast_2d([r_i*(1-factor),   0, 0])
+    
+    p.vBH1[:] = np.atleast_2d([0.0, v_i*factor, 0])
+    p.vBH2[:] = np.atleast_2d([0.0, -v_i*(1-factor), 0])
+    
+
+    
+    elements = calc_orbital_elements(p.xBH1 - p.xBH2 , p.vBH1 - p.vBH2, M_tot)
     print("(a_i, e_i):", float(elements[0]/_PC), ",", float(elements[1]))
     print("DM pseudoparticle mass [Msun]:", M_DM/_MSUN)
+    
+    b_90 = _G*M_2/v_i**2
+    
+
     
     #Initialise DM properties
     print("> Initialising...")
@@ -151,15 +222,13 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
         vhat = tools.get_random_direction()
         p.xDM[i,:] = r[i]*rhat * _PC
         p.vDM[i,:] = v[i]*vhat * _PC/_MYR
+        
+    p.xDM += p.xBH1
+    p.vDM += p.vBH1
     
-    # Simulation parameters
-    N_step = 10000
-    N_orb = 100
-    
-    T_orb = 2 * np.pi * np.sqrt(a_i ** 3 / (_G*M_tot))
-    t_end = N_orb*T_orb
-    dt = t_end/N_step
-    print("> Timestep [s]:", dt)
+    print(b_90/_PC)
+    print(p.r_isco2/_PC)
+    print(v_i*dt/_PC)
     
     ts = np.linspace(0, t_end, N_step)
     xBH_list = np.zeros((N_step, 3))
@@ -177,55 +246,66 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
     #-----------------------------
     IDhash = tools.generate_hash()
     print("> Hash: " + IDhash)
-    f = h5py.File(f"../test_snapshots/{IDhash}.hdf5", "w")
+    f = h5py.File(f"{TEST_SNAP_DIR}/{IDhash}.hdf5", "w")
     grp = f.create_group("data")
     grp.attrs['M_1'] = M_1/_MSUN
     grp.attrs['M_2'] = M_2/_MSUN
     grp.attrs['a_i'] = a_i/_PC
     grp.attrs['e_i'] = e_i
     grp.attrs['N_DM'] = N_DM
+    if (dynamic_BH):
+        grp.attrs['dynamic'] = 1
+    else:
+        grp.attrs['dynamic'] = 0
     #Save more stuff here...
     
-    t_data   = grp.create_dataset("t", (N_step,), dtype='f', compression="gzip")
-    xBH_data = grp.create_dataset("xBH", (N_step,3), dtype='f', compression="gzip")
-    vBH_data = grp.create_dataset("vBH", (N_step,3), dtype='f', compression="gzip")
-    #print(list(grp.attrs.keys()))
-    #dset = f.create_dataset("mydataset", (100,), dtype='i')
-    #dset.attrs['temperature'] = 99.5
+    datatype = np.float64
+    t_data   = grp.create_dataset("t", (N_step,), dtype=datatype, compression="gzip")
+    xBH1_data = grp.create_dataset("xBH1", (N_step,3), dtype=datatype, compression="gzip")
+    vBH1_data = grp.create_dataset("vBH1", (N_step,3), dtype=datatype, compression="gzip")
     
-    xBH_list = np.zeros((N_step, 3))
-    vBH_list = np.zeros((N_step, 3))
+    xBH2_data = grp.create_dataset("xBH2", (N_step,3), dtype=datatype, compression="gzip")
+    vBH2_data = grp.create_dataset("vBH2", (N_step,3), dtype=datatype, compression="gzip")
+    
+    xBH1_list = np.zeros((N_step, 3))
+    vBH1_list = np.zeros((N_step, 3))
+    
+    xBH2_list = np.zeros((N_step, 3))
+    vBH2_list = np.zeros((N_step, 3))
     t_list   = np.zeros(N_step)
     N_update = 2500
     
     
     #--------------------------
     print("> Simulating...")
-    
+
     
     for it in tqdm(range(N_step)):
            
         t_list[it]     = ts[it]     
-        xBH_list[it,:] = 1.0*p.xBH
-        vBH_list[it,:] = 1.0*p.vBH
+        xBH1_list[it,:] = p.xBH1
+        vBH1_list[it,:] = p.vBH1
+        
+        xBH2_list[it,:] = p.xBH2
+        vBH2_list[it,:] = p.vBH2
         
         if (it%N_update == 0):
             t_data[:]     = 1.0*t_list
-            xBH_data[:,:] = 1.0*xBH_list
-            vBH_data[:,:] = 1.0*vBH_list
+            
+            xBH1_data[:,:] = 1.0*xBH1_list
+            vBH1_data[:,:] = 1.0*vBH1_list
+            
+            xBH2_data[:,:] = 1.0*xBH2_list
+            vBH2_data[:,:] = 1.0*vBH2_list     
             
     
+        #https://arxiv.org/abs/2007.05308
         if (method == "DKD"):
             
             p.xstep(0.5*dt)
             p.vstep(1.0*dt)
             p.xstep(0.5*dt)
-    
-        elif (method == "KDK"):
 
-            p.vstep(0.5*dt)
-            p.xstep(1.0*dt)
-            p.vstep(0.5*dt)
             
         elif (method == "FR"):
             
@@ -246,11 +326,16 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
             
     #One final update of the output data
     t_data[:]     = 1.0*t_list
-    xBH_data[:,:] = 1.0*xBH_list
-    vBH_data[:,:] = 1.0*vBH_list
+    
+    xBH1_data[:,:] = 1.0*xBH1_list
+    vBH1_data[:,:] = 1.0*vBH1_list
+    
+    xBH2_data[:,:] = 1.0*xBH2_list
+    vBH2_data[:,:] = 1.0*vBH2_list
     
     print("> Simulation completed.")
     f.close()
+    
     
     return IDhash
     
@@ -260,20 +345,31 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
     
 def make_plots(IDhash):
     
-    f = h5py.File(f"../test_snapshots/{IDhash}.hdf5", 'r')
+    f = h5py.File(f"{TEST_SNAP_DIR}/{IDhash}.hdf5", 'r')
     ts       = np.array(f['data']['t'])
-    xBH_list = np.array(f['data']['xBH'])
-    vBH_list = np.array(f['data']['vBH'])
+    xBH1_list = np.array(f['data']['xBH1'])
+    vBH1_list = np.array(f['data']['vBH1'])
+    
+    xBH2_list = np.array(f['data']['xBH2'])
+    vBH2_list = np.array(f['data']['vBH2'])
+    
+    xBH_list = xBH2_list - xBH1_list
+    vBH_list = vBH2_list - vBH1_list
     
     N_step = len(ts-1)
     
     M_1 = f['data'].attrs["M_1"]*_MSUN
     M_2 = f['data'].attrs["M_2"]*_MSUN
     a_i = f['data'].attrs["a_i"]*_PC
+    dynamic_BH = f['data'].attrs["dynamic"]
+
     
     f.close()
     
-    M_tot = M_1 + M_2
+    if (dynamic_BH == 1):
+        M_tot = M_1 + M_2
+    else:
+        M_tot = 1.0*M_1
     T_orb = 2 * np.pi * np.sqrt(a_i ** 3 / (_G*M_tot))
     
     a_list, e_list = calc_orbital_elements(xBH_list, vBH_list, M_tot)
@@ -342,7 +438,7 @@ def make_plots(IDhash):
         i_vals[j+1] = np.where(ts == t_min)[0]
         #print(i_vals[j+1])
     #for j in range(N_orbs)
-        plt.axvline(i_vals[j+1], linestyle='--', color='grey')
+        #plt.axvline(i_vals[j+1], linestyle='--', color='grey')
     
 
     #print(ts)
@@ -391,6 +487,13 @@ def make_plots(IDhash):
     plt.xlabel(r"$N_\mathrm{orbits}$")
     plt.ylabel(r"$e$")
 
+    #---------------------
+    
+    plt.figure()
+    
+    plt.plot(norm(xBH1_list)/_PC)
+    plt.xlabel(r"$r_1$")
+
     #----------------------
     plt.figure()
 
@@ -423,7 +526,7 @@ def make_plots(IDhash):
 #def main(N_DM, noDM = False):
 def main():
     print("> Running simulation...")
-    ID = run_simulation(M_1 = 1000*_MSUN, M_2 = 1*_MSUN, a_i = 1e-9*_PC, e_i = 0.0, N_DM = 0, method="DKD")
+    ID = run_simulation(M_1 = 100*_MSUN, M_2 = 1*_MSUN, a_i = 1e-9*_PC, e_i = 0.0, N_DM = 10000, method="FR", dynamic_BH=True)
     print("> Generating plots...")
     make_plots(ID)
     #make_plots()
