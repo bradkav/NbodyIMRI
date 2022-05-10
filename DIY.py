@@ -102,12 +102,15 @@ class particles():
         r = norm(dx)
         #if (np.sum(r < self.r_isco2)):
         #    print("Close encounter!")
-        rsq = np.atleast_2d(r**2 + 0.0*self.r_isco2**2).T
+        #rsq = np.clip(np.atleast_2d(r**2).T, self.r_isco2**2, 1e30)
+        rsq = np.atleast_2d(r**2).T
         acc_DM2 = -_G*self.M_2*dx/rsq**1.5
         
         #print((rsq < self.r_isco2**2).shape)
         inds = rsq < self.r_isco2**2
         
+        #if (np.sum(inds) > 0):
+        #    print(np.sum(inds))
         acc_DM2[inds.flatten(),:] *= 0.0
     
         dx = self.xDM - self.xBH1
@@ -155,10 +158,16 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
         M_tot = M_1
     mu = _G*M_tot
     v_i = np.sqrt( mu * (2.0/r_i - 1.0/a_i) )
+    
+    r_p = a_i * (1 - e_i)
+    v_p = np.sqrt( mu * (2.0/r_p - 1.0/a_i) )
  
+    print(v_i, v_p)
     # Simulation parameters
     N_step = 10000
     N_orb = 100
+    
+    print("Need to tune step-size vs softening length...")
     
     T_orb = 2 * np.pi * np.sqrt(a_i ** 3 / (_G*M_tot))
     t_end = N_orb*T_orb
@@ -168,13 +177,13 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
     #N = 0
     #r_soft = (N**2*dt**2*_G*M_2)**(1/3) #DO NOT CHANGE _ THIS SEEMS TO WORK!!!
     #r_soft = 2*np.pi*N*a_i*dt/T_orb
-    print("> Drift per timestep [pc]: ", v_i*dt/_PC)
-    #r_soft = 10000*6*_G*M_2/_C**2
-    r_soft = v_i*dt
-    print("> Softening length [pc]: ",r_soft/_PC)
+
+    
     
     # Initialise central potential and binary orbit
     SpikeDF = DF.SpikeDistribution(M_1/_MSUN, rho_6=1e15, gamma_sp=gamma)
+    
+
     
     if (N_DM > 0):
         M_spike = SpikeDF.M_DM_ini(r_max/_PC)*_MSUN
@@ -182,6 +191,19 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
     else:
         N_DM = 2 #Keep N_DM = 2 so that all the arrays work as expected...
         M_DM = 0.0
+       
+    l_avg = (SpikeDF.rho_ini(r_i/_PC)*_MSUN/_PC**3/M_DM)**(-1/3)
+    print("> Mean DM particle separation [pc]:", l_avg/_PC)
+    
+    b_90 = _G*M_2/v_i**2    
+    r_min = 0.5*(np.sqrt(4*b_90**2 + 4*l_avg**2) - 2*b_90)
+    print("> Typical r_min [pc]:", r_min/_PC)
+    
+    r_soft = l_avg/10
+    print("> Drift per timestep [pc]: ", v_i*dt/_PC)
+    #r_soft = 10000*6*_G*M_2/_C**2
+    #r_soft = 10*v_p*dt
+    print("> Softening length [pc]: ",r_soft/_PC)
         
     p = particles(M_1, M_2, N_DM=N_DM, M_DM=M_DM, dynamic_BH=dynamic_BH, r_soft=r_soft)
         
@@ -205,10 +227,10 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
 
     
     elements = calc_orbital_elements(p.xBH1 - p.xBH2 , p.vBH1 - p.vBH2, M_tot)
-    print("(a_i, e_i):", float(elements[0]/_PC), ",", float(elements[1]))
-    print("DM pseudoparticle mass [Msun]:", M_DM/_MSUN)
+    print("> Orbital elements (a_i, e_i):", float(elements[0]/_PC), ",", float(elements[1]))
+    print("> DM pseudoparticle mass [Msun]:", M_DM/_MSUN)
     
-    b_90 = _G*M_2/v_i**2
+
     
 
     
@@ -225,17 +247,14 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
         
     p.xDM += p.xBH1
     p.vDM += p.vBH1
-    
-    print(b_90/_PC)
-    print(p.r_isco2/_PC)
-    print(v_i*dt/_PC)
+
     
     ts = np.linspace(0, t_end, N_step)
     xBH_list = np.zeros((N_step, 3))
     
     
-    print("> r_isco(1) [pc]: ", p.r_isco1/_PC)
-    print("> r_isco(2) [pc]: ", p.r_isco2/_PC)
+    print("> r_isco(1) [pc]: ", 6*_G*M_1/_C**2/_PC)
+    print("> r_isco(2) [pc]: ", 6*_G*M_2/_C**2/_PC)
     
     print("> dt [s]:", dt/_S)
     print("> t_end [s]:", t_end/_S)
@@ -275,6 +294,8 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
     t_list   = np.zeros(N_step)
     N_update = 2500
     
+    rmin_list = np.zeros(N_step)
+    
     
     #--------------------------
     print("> Simulating...")
@@ -288,6 +309,9 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
         
         xBH2_list[it,:] = p.xBH2
         vBH2_list[it,:] = p.vBH2
+        
+        r_BH = norm(p.xBH2 - p.xDM)
+        rmin_list[it] = np.min(r_BH)
         
         if (it%N_update == 0):
             t_data[:]     = 1.0*t_list
@@ -336,6 +360,12 @@ def run_simulation(M_1, M_2, a_i, e_i, N_DM = 0, gamma = 7/3, r_max = 1e-6*_PC, 
     print("> Simulation completed.")
     f.close()
     
+    plt.figure()
+    
+    plt.semilogy(rmin_list/_PC)
+    plt.axhline(r_soft/_PC, linestyle='--', color='r')
+    
+    plt.ylabel(r'$r_\mathrm{min}$ [pc]')
     
     return IDhash
     
@@ -453,6 +483,11 @@ def make_plots(IDhash):
 
     plt.tight_layout()
     
+    delta_a = a_list[-1] - a_list[0]
+    dlogadt = (delta_a/a_list[0])/ts[-1]
+    
+    print("> a-dot/a [s^-1]:", dlogadt)
+    
 
     #----------------------
 
@@ -526,7 +561,7 @@ def make_plots(IDhash):
 #def main(N_DM, noDM = False):
 def main():
     print("> Running simulation...")
-    ID = run_simulation(M_1 = 100*_MSUN, M_2 = 1*_MSUN, a_i = 1e-9*_PC, e_i = 0.0, N_DM = 10000, method="FR", dynamic_BH=True)
+    ID = run_simulation(M_1 = 100*_MSUN, M_2 = 1*_MSUN, a_i = 3e-8*_PC, e_i = 0.0, N_DM = 10000, method="FR", dynamic_BH=True)
     print("> Generating plots...")
     make_plots(ID)
     #make_plots()
