@@ -1,15 +1,20 @@
-S      = 1
+#Base units
+s      = 1
+kg     = 1
+m      = 1
 
-#_MSUN   = 1.98855e30 #kg
-MSUN   = 1.0
-KG     = 1/1.98855e30
-PC     = 3.08567758149137e16 #m
-CM     = 1e-2
-YR     = 365.25 * 24 * 3600*S #s
-MYR    = 1e6*YR
-GEV    = 1.79e-27*KG
-KM     = 1e3
+#Derived units
+g      = 1e-3*kg
+GeV    = 1.79e-27*kg
+Msun   = 1.98855e30*kg
 
+yr     = 365.25 * 24 * 3600*s
+Myr    = 1e6*yr
 
-G      = 4.302e-3*(PC/MSUN)*(KM/S)**2
-C      = 3e8
+cm     = 1e-2*m
+km     = 1e3*m
+pc     = 3.08567758149137e16*m
+
+#Constants
+G_N    = 4.30091e-3*(pc/Msun)*(km/s)**2
+c      = 3e8*m/s
