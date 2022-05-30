@@ -72,10 +72,13 @@ def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
     return p
     
     
-def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc):
+def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc, r_t = -1, alpha = 2):
     
     if (N_DM > 0):
-        SpikeDF = DF.SpikeDistribution(M_1/u.pc, rho_6/(u.Msun/u.pc**3), gamma_sp)
+        if (r_t < 0):
+            SpikeDF = DF.PowerLawSpike(M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp)
+        else:
+            SpikeDF = DF.GeneralizedNFWSpike(M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp, r_t/u.pc, alpha)
         M_spike = SpikeDF.M_DM_ini(r_max/u.pc)*u.Msun
         M_DM    = (M_spike/N_DM)
     else:
@@ -84,14 +87,18 @@ def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u
     p = particles(M_1, M_2=0.0, N_DM=N_DM, M_DM=M_DM, dynamic_BH=False)
     
     if (N_DM > 0):
-        p.initialize_spike(rho_6, gamma_sp, r_max)
+        p.initialize_spike(rho_6, gamma_sp, r_max, r_t, alpha)
     
     return p
     
-def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, M_DM=0.0, dynamic_BH=True, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc):
+def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, M_DM=0.0, dynamic_BH=True, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc, r_t = -1, alpha = 2):
     
     if (N_DM > 0):
-        SpikeDF = DF.SpikeDistribution(M_1/u.pc, rho_6/(u.Msun/u.pc**3), gamma_sp)
+        if (r_t < 0):
+            SpikeDF = DF.PowerLawSpike(M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp)
+        else:
+            SpikeDF = DF.GeneralizedNFWSpike(M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp, r_t/u.pc, alpha)
+            
         M_spike = SpikeDF.M_DM_ini(r_max/u.pc)*u.Msun
         M_DM    = (M_spike/N_DM)
     else:
@@ -117,7 +124,7 @@ def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, M_DM=0.0, dynamic_BH=Tru
     p.vBH2[:] = np.atleast_2d([0.0, -v_i*(1-factor), 0])
     
     if (N_DM > 0):
-        p.initialize_spike(rho_6, gamma_sp, r_max)
+        p.initialize_spike(rho_6, gamma_sp, r_max, r_t, alpha)
         
     return p
     
@@ -171,10 +178,13 @@ class particles():
         a_i, e_i = self.orbital_elements()
         return 2*np.pi*np.sqrt(a_i**3/(u.G_N*self.M_tot))
     
-    def initialize_spike(self, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc):
+    def initialize_spike(self, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc, r_t = -1, alpha  = 2):
         
         if (self.N_DM > 2):
-            SpikeDF = DF.SpikeDistribution(self.M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp)
+            if (r_t < 0):
+                SpikeDF = DF.PowerLawSpike(self.M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp)
+            else:
+                SpikeDF = DF.GeneralizedNFWSpike(self.M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp, r_t/u.pc, alpha)
             r, v = SpikeDF.draw_particle(r_max/u.pc, N = self.N_DM)
 
             for i in range(self.N_DM):
@@ -247,10 +257,10 @@ class particles():
         #---------------------------------------
         if (self.M_DM > 0):
  
-            r_vals = tools.norm(self.xDM)
+            r_vals = tools.norm(self.xDM - self.xBH1)
             axes[2].hist(np.log10(r_vals/u.pc), 50, density=True)
             
-            axes[2].set_xlabel(r"$r$ [pc]")
+            axes[2].set_xlabel(r"$\log_{10}(r/\mathrm{pc})$")
             axes[2].set_ylabel(r"$P(\log_{10}(r/\mathrm{pc}))$")
         
         plt.tight_layout()
@@ -392,6 +402,7 @@ class simulator():
         self.ts        = np.linspace(0, t_end, N_step)
         
         self.rmin_list = np.zeros(N_step)
+        self.vrel_list = np.zeros(N_step)
         
         if (save_to_file):
             self.t_data[:] = 1.0*self.ts
@@ -411,8 +422,11 @@ class simulator():
             self.xBH2_list[it,:] = self.p.xBH2
             self.vBH2_list[it,:] = self.p.vBH2
             
-            rDM = tools.norm(self.p.xBH2 - self.p.xDM)
-            self.rmin_list[it] = np.min(rDM) 
+            #BJK: Remove this for production
+            #rDM = tools.norm(self.p.xBH2 - self.p.xDM)
+            #ic  = np.argmin(rDM)
+            #self.rmin_list[it] = rDM[ic]
+            #self.vrel_list[it] = tools.norm(self.p.vBH2 - self.p.vDM[ic, :])
         
             if ((it%N_update == 0) and (save_to_file)):
         
@@ -538,6 +552,19 @@ def load_trajectory(IDhash):
     a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, M_tot)
     
     return ts/T_orb, a_list, e_list
+    
+def load_DMparticles(IDhash, final=True):
+    f = h5py.File(f"{OUT_SNAP_DIR}/{IDhash}.hdf5", 'r')
+    
+    if (final == True):
+        tag = "f"
+    else:
+        tag = "i"
+        
+    xDM_list =  np.array(f['data']['xDM_' + tag])
+    vDM_list =  np.array(f['data']['vDM_' + tag])
+    
+    return xDM_list, vDM_list
     
 def show_simulation_summary(IDhash):
     f = h5py.File(f"{OUT_SNAP_DIR}/{IDhash}.hdf5", 'r')
