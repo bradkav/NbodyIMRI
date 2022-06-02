@@ -551,7 +551,8 @@ def load_trajectory(IDhash):
     
     a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, M_tot)
     
-    return ts/T_orb, a_list, e_list
+    #return ts/T_orb, a_list, e_list
+    return ts, a_list, e_list
     
 def load_DMparticles(IDhash, final=True):
     f = h5py.File(f"{OUT_SNAP_DIR}/{IDhash}.hdf5", 'r')
@@ -592,21 +593,23 @@ def load_entry(i, dtype='float'):
     listfile = f'{OUT_SNAP_DIR}/SimulationList.txt'
     return np.loadtxt(listfile, unpack=True, usecols=(i,), dtype=dtype)
     
+print("This needs to be a dictionary! Also - fix e_i...")
 def load_simulation_list():
 
     hashes = load_entry(0, dtype=str)
-    M_1     = load_entry(1)*u.MSUN
-    M_2     = load_entry(2)*u.MSUN
+    M_1     = load_entry(1)*u.Msun
+    M_2     = load_entry(2)*u.Msun
     a_i     = load_entry(3)*u.pc
-    e_i     = load_entry(4)
+    #e_i     = load_entry(4)
+    e_i     = 0.0*a_i
     N_DM    = load_entry(5, dtype=int)
-    M_DM    = load_entry(6)*u.MSUN
-    N_step  = load_entry(7, dtype=int)
-    N_orb   = load_entry(8, dtype=int)
+    M_DM    = load_entry(6)*u.Msun
+    dt      = load_entry(7, dtype=float)*u.s
+    t_end   = load_entry(8)*u.s
     r_soft  = load_entry(9)*u.pc
     method  = load_entry(10, dtype=str)
     
-    return hashes, M_1, M_2, a_i, e_i, N_DM, M_DM, N_step, N_orb, r_soft, method
+    return hashes, M_1, M_2, a_i, e_i, N_DM, M_DM, dt, t_end, r_soft, method
 
     
 def make_plots(IDhash):
