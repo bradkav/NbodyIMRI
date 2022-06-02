@@ -384,8 +384,9 @@ class simulator():
         self.dt      = dt
         N_step = int(np.ceil(t_end/dt)) 
 
-        
         a_i, e_i = self.p.orbital_elements()
+        self.a_i = float(a_i)
+        self.e_i = float(e_i)
         T_orb    = self.p.T_orb()        
         
         self.method = method
@@ -414,7 +415,7 @@ class simulator():
     
 
     
-        for it in tqdm(range(N_step)):
+        for it in range(N_step):
                
             self.xBH1_list[it,:] = self.p.xBH1
             self.vBH1_list[it,:] = self.p.vBH1
@@ -505,19 +506,18 @@ class simulator():
         
     
         meta_data = np.array([self.IDhash, self.p.M_1/u.Msun, self.p.M_2/u.Msun, 
-                            a_i/u.pc, e_i, self.p.N_DM, self.p.M_DM/u.Msun, 
+                            self.a_i/u.pc, self.e_i, self.p.N_DM, self.p.M_DM/u.Msun, 
                             self.dt, self.t_end, np.sqrt(self.r_soft_sq)/u.pc, self.method])
                             
         meta_data = np.reshape(meta_data, (1,  len(meta_data)))
     
     
-        if (add_to_list):
-            if (os.path.isfile(listfile)):
-                    with open(listfile,'a') as g:
-                        np.savetxt(g, meta_data, fmt='%s')
-                    g.close()
-            else:
-                    np.savetxt(listfile, meta_data, header=hdrtxt, fmt='%s')
+        if (os.path.isfile(listfile)):
+            with open(listfile,'a') as g:
+                np.savetxt(g, meta_data, fmt='%s')
+            g.close()
+        else:
+            np.savetxt(listfile, meta_data, header=hdrtxt, fmt='%s')
         
         
 
