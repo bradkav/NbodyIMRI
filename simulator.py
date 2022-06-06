@@ -88,11 +88,16 @@ class simulator():
     def update_acceleration(self):
         
         dx1     = (self.p.xDM - self.p.xBH1)
-        r1_sq   = np.linalg.norm(dx1, axis=-1, keepdims=True)**2
-        dx1    /= np.sqrt(r1_sq)
+        r1      = np.linalg.norm(dx1, axis=-1, keepdims=True)
+        dx1    /= r1
+        r1_sq   = r1**2
+        
         
         if (self.soft_method == "plummer"):
             acc_DM1 = -u.G_N*self.p.M_1*dx1*(r1_sq + self.r_soft_sq)**-1
+            
+        elif (self.soft_method == "plummer2"):
+            acc_DM1 = -u.G_N*self.p.M_1*r1*(dx1/2)*(2*r1_sq + 5*self.r_soft_sq)*(r1_sq + self.r_soft_sq)**(-5/2)
             
         elif (self.soft_method == "uniform"):
             x = np.sqrt(r1_sq/self.r_soft_sq)
@@ -110,11 +115,18 @@ class simulator():
             print("WHAT?!")
         
         dx2     = (self.p.xDM - self.p.xBH2)
-        r2_sq   = np.linalg.norm(dx2, axis=-1, keepdims=True)**2
-        dx2     /= np.sqrt(r2_sq)
+        r2      = np.linalg.norm(dx2, axis=-1, keepdims=True)
+        dx2     /= r2
+        r2_sq   = r2**2 
+        
+        #Consider also Eq. (2.227) in Binney and Tremaine
+        #https://arxiv.org/pdf/2104.05643.pdf
         
         if (self.soft_method == "plummer"):
             acc_DM2 = -u.G_N*self.p.M_2*dx2*(r2_sq + self.r_soft_sq)**-1
+            
+        elif (self.soft_method == "plummer2"):
+            acc_DM2 = -u.G_N*self.p.M_2*r2*(dx2/2)*(2*r2_sq + 5*self.r_soft_sq)*(r2_sq + self.r_soft_sq)**(-5/2)
             
         elif (self.soft_method == "uniform"):
             x = np.sqrt(r2_sq/self.r_soft_sq)
@@ -146,7 +158,7 @@ class simulator():
         
     
             
-    def run_simulation(self, dt, t_end, method="DKD", save_to_file = True, add_to_list = False):
+    def run_simulation(self, dt, t_end, method="DKD", save_to_file = True, add_to_list = False, show_progress=False):
         #--------------------------
         print("> Simulating...")
         
@@ -184,8 +196,10 @@ class simulator():
         N_update  = 100000
     
 
-    
-        for it in range(N_step):
+        stepper = lambda x: x
+        if (show_progress):
+            stepper = tqdm
+        for it in stepper(range(N_step)):
                
             self.xBH1_list[it,:] = self.p.xBH1
             self.vBH1_list[it,:] = self.p.vBH1
@@ -273,12 +287,12 @@ class simulator():
     def output_metadata(self):
         
         listfile = f'{OUT_SNAP_DIR}/SimulationList.txt'
-        hdrtxt = "Columns: IDhash, M_1/MSUN, M_2/MSUN, a_i/PC, e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
+        hdrtxt = "Columns: IDhash, M_1/MSUN, M_2/MSUN, a_i/r_isco(M1), e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
     
         T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot))
     
         meta_data = np.array([self.IDhash, self.p.M_1/u.Msun, self.p.M_2/u.Msun, 
-                            self.a_i/u.pc, self.e_i, self.p.N_DM, self.p.M_DM/u.Msun, 
+                            self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM/u.Msun, 
                             int(np.round(T_orb/self.dt)), int(np.round(self.t_end/T_orb)), np.sqrt(self.r_soft_sq)/u.pc, self.method,
                             self.p.rho_6/(u.Msun/u.pc**3), self.p.gamma_sp, self.p.alpha, self.p.r_t/u.pc])
                             
@@ -372,7 +386,7 @@ def load_simulation_list():
     hashes = load_entry(0, dtype=str)
     M_1     = load_entry(1)*u.Msun
     M_2     = load_entry(2)*u.Msun
-    a_i     = load_entry(3)*u.pc
+    a_i     = load_entry(3)*tools.calc_risco(M_1)
     #e_i     = load_entry(4)
     e_i     = 0.0*a_i
     N_DM    = load_entry(5, dtype=int)

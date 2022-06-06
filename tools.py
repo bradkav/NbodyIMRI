@@ -54,3 +54,6 @@ def calc_rho_6(rho_sp, M_1, gamma):
     k = (3-gamma)*(0.2)**(3-gamma)/(2*np.pi)
     rho_6 = (rho_sp)**(1-gamma/3)*(k*M_1)**(gamma/3)*r_6**-gamma
     return rho_6
+    
+def calc_risco(M_1):
+    return 6*u.G_N*M_1/u.c**2
