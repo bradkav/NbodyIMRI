@@ -287,12 +287,12 @@ class simulator():
     def output_metadata(self):
         
         listfile = f'{OUT_SNAP_DIR}/SimulationList.txt'
-        hdrtxt = "Columns: IDhash, M_1/MSUN, M_2/MSUN, a_i/PC, e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
+        hdrtxt = "Columns: IDhash, M_1/MSUN, M_2/MSUN, a_i/r_isco(M1), e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
     
         T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot))
     
         meta_data = np.array([self.IDhash, self.p.M_1/u.Msun, self.p.M_2/u.Msun, 
-                            self.a_i/u.pc, self.e_i, self.p.N_DM, self.p.M_DM/u.Msun, 
+                            self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM/u.Msun, 
                             int(np.round(T_orb/self.dt)), int(np.round(self.t_end/T_orb)), np.sqrt(self.r_soft_sq)/u.pc, self.method,
                             self.p.rho_6/(u.Msun/u.pc**3), self.p.gamma_sp, self.p.alpha, self.p.r_t/u.pc])
                             
@@ -386,7 +386,7 @@ def load_simulation_list():
     hashes = load_entry(0, dtype=str)
     M_1     = load_entry(1)*u.Msun
     M_2     = load_entry(2)*u.Msun
-    a_i     = load_entry(3)*u.pc
+    a_i     = load_entry(3)*tools.calc_risco(M_1)
     #e_i     = load_entry(4)
     e_i     = 0.0*a_i
     N_DM    = load_entry(5, dtype=int)
