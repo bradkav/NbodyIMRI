@@ -8,14 +8,14 @@
 
 Install using 
 
-'''
+```
 pip install .
-'''
+```
 
 Alternatively, if you'd like to install the editable version, do:
 
-'''
+```
 pip install -e .
-'''
+```
 
 
