@@ -62,7 +62,10 @@ def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
     return p
     
     
-def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc, r_t = -1, alpha = 2):
+def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_t = -1, alpha = 2):
+    if (r_max < 0):
+        r_max = 1e5*tools.calc_risco(M_1)
+    
     
     if (N_DM > 0):
         if (r_t < 0):
@@ -81,7 +84,10 @@ def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u
     
     return p
     
-def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, M_DM=0.0, dynamic_BH=True, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc, r_t = -1, alpha = 2, include_DM_mass=False):
+def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, M_DM=0.0, dynamic_BH=True, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_t = -1, alpha = 2, include_DM_mass=False):
+    
+    if (r_max < 0):
+        r_max = 1e5*tools.calc_risco(M_1)
     
     if (N_DM > 0):
         if (r_t < 0):

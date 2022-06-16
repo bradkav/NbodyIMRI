@@ -2,7 +2,7 @@
 
 #### Current version
 
-15/06/2022: The current version doesn't have any examples or documentation, but will be updated shortly. 
+16/06/2022: The current version is not very well documented, but there are a couple of very simple examples in the [`examples/`](examples) folder. A full early release of the code (including more detailed examples) will be available soon.
 
 #### Installation
 

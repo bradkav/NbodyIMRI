@@ -160,7 +160,7 @@ class simulator():
         
     
             
-    def run_simulation(self, dt, t_end, method="DKD", save_to_file = False, add_to_list = False, show_progress=False):
+    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False):
         #--------------------------
         print("> Simulating...")
         
