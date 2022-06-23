@@ -4,7 +4,7 @@ from scipy.integrate import cumtrapz
 import sys
 
 from NbodyIMRI import tools
-import constants as const
+import NbodyIMRI.constants as const
 from scipy.special import hyp2f1
 
 from abc import ABC
