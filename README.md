@@ -4,7 +4,7 @@
 
 #### Current version
 
-23/06/2022: The current version is still in active development. However, there are some complete examples in the [`examples/`](examples) folder:
+**23/06/2022:** The current version is still in active development. However, there are some complete examples in the [`examples/`](examples) folder:
 
 - [`Examples_Spike.ipynb`](examples/Examples_Spike.ipynb) - An example showing how to initialise a single BH surrounded by a Dark Matter spike and evolve in time.
 - [`Examples_Binary.ipynb`](examples/Examples_Binary.ipynb) - A very simple example of an isolated binary, looking at how the time-step size affects the precision of the orbital evolution.
