@@ -31,7 +31,7 @@ Note that all of the modules use `units.py` (included in the code) for specifyin
 
 The output directories for files can be changed by doing:
 
-'''
+```python
 import NbodyIMRI
 NbodyIMRI.snapshot_dir = "path_to_directory"
-'''
+```
