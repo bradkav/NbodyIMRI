@@ -11,6 +11,9 @@ from abc import ABC
 
 
 """
+WARNING: Unlike the rest of the code, this module does not use the 'units' module.
+Instead, it uses an implicit system of units, as defined below:
+
 Units:
     - Masses in MSun
     - Times in Myr

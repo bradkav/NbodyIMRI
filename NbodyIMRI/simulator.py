@@ -28,31 +28,56 @@ lam = -0.2123418310626054e+00
 chi = -0.6626458266981849e-01
 #-----------------------------
 
-
+#NB: For PN corrections, see https://arxiv.org/abs/1312.1289
+#NB: Deal with saving of M1 and M2 values for wheel and spoke
 
 
 class simulator():
-    def __init__(self, particle_set, r_soft_sq = 0.0, soft_method="plummer"):
+    """
+    Class for evolving the N-body system.
+    
+    Attributes:
+        p (particles)       : A particles object, which specifies the initial conditions of the objects to simulate (a deep copy is made and used internally by the simulator)
+        r_soft_sq (float)   : The square of the softening length to be used for the DM particles (the BH-BH forces are not softened)
+        soft_method (string): Softening method to be used. Options are: "plummer", "plummer2", "uniform", "truncate". 
+                            Default is "uniform" which computes the softening assuming that each DM particle is a finite sphere of uniform density.
+        IDhash (string)     : A hash made up of 5 hexadecimal digits which identifies the simulation (and the output files). This is generated on instantiation of the class. 
+        check_state (function): A function which will be called in between each timestep to check the state of the simulation and perform any required operations. 
+                                (For example, removing certain particles). Must have the signature `check_state(simulator)`. Default is None. 
+    
+    """
+    
+    def __init__(self, particle_set, r_soft_sq = 0.0, soft_method="uniform", check_state = None):
             
         self.p = copy.deepcopy(particle_set)
         self.r_soft_sq = r_soft_sq
         self.IDhash = tools.generate_hash()    
         self.soft_method = soft_method    
+        self.check_state = check_state
                     
             
-    def full_step(self, dt, method="DKD"):
+    def full_step(self, dt, method="PEFRL"):
         """
-        Perform a full leapfrog step, with timestep dt
+        Perform a full leapfrog step, See e.g. https://arxiv.org/abs/2007.05308, http://physics.ucsc.edu/~peter/242/leapfrog.pdf
+        
+        Parameters:
+            dt (float)      : size of the timestep (the leapfrog is made up of many sub-steps, with dt being the size of one full leapfrog step)
+            method (string) : leapfrog method to use. Options are: "DKD", "FR", "PEFRL" [default]. These corresponds to 2nd, 4th and 4th order methods.
+        
+        Returns:
+            None
+        
         """
         
-        #https://arxiv.org/abs/2007.05308
+        
+        #2nd order 'standard' leapfrog
         if (method == "DKD"):
             self.p.xstep(0.5*dt)
             self.update_acceleration()
             self.p.vstep(1.0*dt)
             self.p.xstep(0.5*dt)
 
-        
+        #4th order Ruth-Forest (FR) leapfrog
         elif (method == "FR"):
             self.p.xstep(theta*dt/2)
             self.update_acceleration()
@@ -65,6 +90,7 @@ class simulator():
             self.p.vstep(theta*dt)
             self.p.xstep(theta*dt/2)
         
+        #Improved 4th order "Position Extended Forest-Ruth Like" (PEFRL) leapfrog
         elif (method == "PEFRL"):
             self.p.xstep(xi*dt)
             self.update_acceleration()
@@ -82,7 +108,14 @@ class simulator():
         
                 
     def update_acceleration(self):
+        """
+        Update the acceleration of all particles in p, based on current positions.
         
+        Returns:
+            None
+        """
+        
+        #Calculate separations between DM particles and central BH
         dx1     = (self.p.xDM - self.p.xBH1)
         r1      = np.linalg.norm(dx1, axis=-1, keepdims=True)
         dx1    /= r1
@@ -95,6 +128,7 @@ class simulator():
             M1_eff  = self.p.M_1 + self.p.M_2
             M2_eff  = (self.p.M_1*self.p.M_2)/(self.p.M_1 + self.p.M_2)
         
+        #Calculate forces (including softening)
         if (self.soft_method == "plummer"):
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq + self.r_soft_sq)**-1
             
@@ -114,72 +148,106 @@ class simulator():
             acc_DM1 = -u.G_N*M1_eff*dx1/r1_sq
             
         else:
-            print("WHAT?!")
+            raise ValueError("Invalid softening method:" + self.soft_method)
         
-        dx2     = (self.p.xDM - self.p.xBH2)
-        r2      = np.linalg.norm(dx2, axis=-1, keepdims=True)
-        dx2     /= r2
-        r2_sq   = r2**2 
-        
-        #Consider also Eq. (2.227) in Binney and Tremaine
-        #https://arxiv.org/pdf/2104.05643.pdf
-        
-        if (self.soft_method == "plummer"):
-            acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq + self.r_soft_sq)**-1
-            
-        elif (self.soft_method == "plummer2"):
-            acc_DM2 = -u.G_N*M2_eff*r2*(dx2/2)*(2*r2_sq + 5*self.r_soft_sq)*(r2_sq + self.r_soft_sq)**(-5/2)
-            
-        elif (self.soft_method == "uniform"):
-            x = np.sqrt(r2_sq/self.r_soft_sq)
-            acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq)**-1
-            inds = x < 1
-            if (np.sum(inds) > 1):
-                inds = inds.flatten()
-                acc_DM2[inds] = -u.G_N*M2_eff*dx2[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq)
-                
-        elif (self.soft_method == "truncate"):
-            r2_sq = np.clip(r2_sq, self.r_soft_sq, 1e50)
-            acc_DM2 = -u.G_N*M2_eff*dx2/r2_sq
-            
-        else:
-            print("WHAT?!")
-        
-        dx12    = (self.p.xBH1 - self.p.xBH2)
-        r12_sq  = np.linalg.norm(dx12, axis=-1, keepdims=True)**2
-        acc_BH = -u.G_N*M2_eff*dx12*(r12_sq)**-1.5
+        #Calculate forces on second BH (if it exists)
+        if (self.p.M_2 > 0):
+            dx2     = (self.p.xDM - self.p.xBH2)
+            r2      = np.linalg.norm(dx2, axis=-1, keepdims=True)
+            dx2     /= r2
+            r2_sq   = r2**2 
 
+
+            if (self.soft_method == "plummer"):
+                acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq + self.r_soft_sq)**-1
+
+            elif (self.soft_method == "plummer2"):
+                acc_DM2 = -u.G_N*M2_eff*r2*(dx2/2)*(2*r2_sq + 5*self.r_soft_sq)*(r2_sq + self.r_soft_sq)**(-5/2)
+
+            elif (self.soft_method == "uniform"):
+                x = np.sqrt(r2_sq/self.r_soft_sq)
+                acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq)**-1
+                inds = x < 1
+                if (np.sum(inds) > 1):
+                    inds = inds.flatten()
+                    acc_DM2[inds] = -u.G_N*M2_eff*dx2[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq)
+
+            elif (self.soft_method == "truncate"):
+                r2_sq = np.clip(r2_sq, self.r_soft_sq, 1e50)
+                acc_DM2 = -u.G_N*M2_eff*dx2/r2_sq
+
+            else:
+                raise ValueError("Invalid softening method:" + self.soft_method)
+
+            #Calculate forces between the 2 BHs  
+            dx12    = (self.p.xBH1 - self.p.xBH2)
+            r12_sq  = np.linalg.norm(dx12, axis=-1, keepdims=True)**2
+            acc_BH = -u.G_N*M2_eff*dx12*(r12_sq)**-1.5
+        else:
+            acc_BH = 0.0
+            acc_DM2 = 0.0
         
+        #Save the values of the acceleration
         if (self.p.dynamic_BH):
             self.p.dvdtBH1 = acc_BH
         else:
             self.p.dvdtBH1 = 0.0
-            
-        self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - (self.p.M_DM/M2_eff)*np.sum(acc_DM2, axis=0)
+        
+        if (self.p.M_2 > 0):
+            self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - (self.p.M_DM/M2_eff)*np.sum(acc_DM2, axis=0)
+        else:
+            self.p.dvdtBH2 = 0.0
         self.p.dvdtDM  = acc_DM1 + acc_DM2
         
     
             
     def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False):
-        #--------------------------
+        """
+        Run the simulator, starting from the current state of particles in p, running for a time t_end.
+        Times and timesteps are in physical times (as opposed to being in terms of number of orbits etc.)
+        BEWARE: run_simulation will erase a previous version of the simulation with the same hashID before starting.
+        
+        Parameters:
+            dt (float)      : Size of the individual timesteps
+            t_end (float)   : End time of the simulation
+            method (string) : Leapfrog method. See `simulator.full_step` for more details.
+            save_to_file (bool):    Set to True in order to output the simulation data to file. Default = False.
+            add_to_list (bool):     Set to True in order to save metadata about the simulation to `SimulationList.txt`. Default = False. 
+            show_progress (bool):   Set to True in order to show a progress bar during the simulation. Default = False
+        
+        Returns:
+            None
+        
+        """
+        
         print("> Simulating...")
         
+        #Determine total number of steps
         self.t_end   = t_end
         self.dt      = dt
         N_step = int(np.ceil(t_end/dt)) 
 
-        a_i, e_i = self.p.orbital_elements()
-        self.a_i = float(a_i)
-        self.e_i = float(e_i)
-        T_orb    = self.p.T_orb()        
+        #Determine initial orbital parameters of the system
+        if (self.p.M_2 > 0):
+            
+            a_i, e_i = self.p.orbital_elements()
+            self.a_i = float(a_i)
+            self.e_i = float(e_i)
+            T_orb    = self.p.T_orb()   
+        else:
+            self.a_i = 0
+            self.e_i = 0    
         
         self.method = method
         self.finished = False
         
+        #Open output file
         if (save_to_file):
             fname = f"{NbodyIMRI.snapshot_dir}/{self.IDhash}.hdf5"
+            os.remove(fname)
             f = self.open_outputfile(fname, N_step)
             
+        #Initialise lists to save the BH positions
         self.xBH1_list = np.zeros((N_step, 3))
         self.vBH1_list = np.zeros((N_step, 3))
     
@@ -187,35 +255,34 @@ class simulator():
         self.vBH2_list = np.zeros((N_step, 3))
         self.ts        = np.linspace(0, t_end, N_step)
         
-        self.rmin_list = np.zeros(N_step)
-        self.vrel_list = np.zeros(N_step)
         
+        #Save the time steps and the initial DM configuration
         if (save_to_file):
             self.t_data[:] = 1.0*self.ts
         
             self.xDM_i_data[:,:] = 1.0*self.p.xDM
             self.vDM_i_data[:,:] = 1.0*self.p.vDM
         
-        N_update  = 100000
+        
+        #Update every 100_000 steps
+        N_update  = 100_000
     
-
+        #Define a dummy in case we're not using a progress bar
         stepper = lambda x: x
         if (show_progress):
             stepper = tqdm
+        
+        #Simulate for N_step time-steps
         for it in stepper(range(N_step)):
-               
+              
+            #Save current binary configuration to array
             self.xBH1_list[it,:] = self.p.xBH1
             self.vBH1_list[it,:] = self.p.vBH1
         
             self.xBH2_list[it,:] = self.p.xBH2
             self.vBH2_list[it,:] = self.p.vBH2
-            
-            #BJK: Remove this for production
-            #rDM = tools.norm(self.p.xBH2 - self.p.xDM)
-            #ic  = np.argmin(rDM)
-            #self.rmin_list[it] = rDM[ic]
-            #self.vrel_list[it] = tools.norm(self.p.vBH2 - self.p.vDM[ic, :])
         
+            #Update data saved in file
             if ((it%N_update == 0) and (save_to_file)):
         
                 self.xBH1_data[:,:] = 1.0*self.xBH1_list
@@ -224,12 +291,15 @@ class simulator():
                 self.xBH2_data[:,:] = 1.0*self.xBH2_list
                 self.vBH2_data[:,:] = 1.0*self.vBH2_list     
             
-    
             #Step forward by dt
             self.full_step(dt, method)
+            
+            #Do any checks of the state of the system in between timesteps
+            if (self.check_state is not None):
+                self.check_state(self)
         
+        #One final update of the output data   
         if (save_to_file):
-            #One final update of the output data    
             self.xBH1_data[:,:] = 1.0*self.xBH1_list
             self.vBH1_data[:,:] = 1.0*self.vBH1_list
     
@@ -241,9 +311,9 @@ class simulator():
     
         print("> Simulation completed.")
     
+        #Add information to SimulationList.txt if required
         if (add_to_list):
             self.output_metadata()
-    
     
         if (save_to_file):
             f.close()
@@ -253,6 +323,10 @@ class simulator():
         
 
     def open_outputfile(self, fname, N_step):
+        """
+        ...
+        
+        """
         f = h5py.File(fname, "w")
         grp = f.create_group("data")
         grp.attrs['M_1'] = self.p.M_1/u.Msun
@@ -290,6 +364,9 @@ class simulator():
         return f
         
     def output_metadata(self):
+        """
+        ...
+        """
         
         listfile = f'{NbodyIMRI.snapshot_dir}/SimulationList.txt'
         hdrtxt = "Columns: IDhash, M_1/MSUN, M_2/MSUN, a_i/r_isco(M1), e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
@@ -312,6 +389,10 @@ class simulator():
             np.savetxt(listfile, meta_data, header=hdrtxt, fmt='%s')
         
     def plot_orbital_elements(self):
+        """
+        ...
+        """
+        
         if (self.finished == False):
             print("Simulation has not been finished. Please run using `rum_simulation()`.")
             return 0
@@ -344,6 +425,9 @@ class simulator():
             return fig
             
     def plot_trajectory(self):
+        """
+        ...
+        """
         if (self.finished == False):
             print("Simulation has not been finished. Please run using `rum_simulation()`.")
             return 0
@@ -361,3 +445,6 @@ class simulator():
             plt.show()
             return fig
         
+    def plot(self):
+        self.p.plot()
+    
