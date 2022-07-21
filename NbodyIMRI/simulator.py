@@ -371,7 +371,7 @@ class simulator():
         listfile = f'{NbodyIMRI.snapshot_dir}/SimulationList.txt'
         hdrtxt = "Columns: IDhash, M_1/MSUN, M_2/MSUN, a_i/r_isco(M1), e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
     
-        T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot))
+        T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot()))
     
         meta_data = np.array([self.IDhash, self.p.M_1/u.Msun, self.p.M_2/u.Msun, 
                             self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM/u.Msun, 
@@ -400,7 +400,7 @@ class simulator():
         else:
             xBH_list = self.xBH1_list - self.xBH2_list
             vBH_list = self.vBH1_list - self.vBH2_list
-            a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, self.p.M_tot)
+            a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, self.p.M_tot())
             
             delta_a = (a_list - a_list[0])/a_list
             delta_e = (e_list - e_list[0])

@@ -161,13 +161,13 @@ def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, dynamic_BH=True, rho_6=1
     r_i = a_i * ( 1 + e_i)
     
     if (include_DM_mass):
-        mu = u.G_N*(p.M_tot + SpikeDF.M_DM_ini(a_i/u.pc)*u.Msun)
+        mu = u.G_N*(p.M_tot() + SpikeDF.M_DM_ini(a_i/u.pc)*u.Msun)
     else:
-        mu = u.G_N*p.M_tot
+        mu = u.G_N*p.M_tot()
     v_i = np.sqrt( mu * (2.0/r_i - 1.0/a_i) )
     
     if (dynamic_BH):
-        factor = M_2/p.M_tot
+        factor = M_2/p.M_tot()
     else:
         factor = 0
             
@@ -190,7 +190,7 @@ class particles():
         self.M_1 = M_1
         self.M_2 = M_2
         
-        self.M_tot = M_1 + M_2
+        #self.M_tot = M_1 + M_2
         
         self.M_DM = M_DM
         self.N_DM = N_DM
@@ -215,6 +215,9 @@ class particles():
         self.gamma_sp = 0.0
         self.alpha    = 0.0
         self.r_t      = -1.0
+    
+    def M_tot(self):
+        return self.M_1 + self.M_2
 
     def xstep(self, h):
         if (self.dynamic_BH):
@@ -230,11 +233,11 @@ class particles():
         self.vDM += self.dvdtDM*h
         
     def orbital_elements(self):
-        return tools.calc_orbital_elements(self.xBH1 - self.xBH2, self.vBH1 - self.vBH2, self.M_tot)
+        return tools.calc_orbital_elements(self.xBH1 - self.xBH2, self.vBH1 - self.vBH2, self.M_tot())
     
     def T_orb(self):
         a_i, e_i = self.orbital_elements()
-        return tools.calc_Torb(a_i, self.M_tot)
+        return tools.calc_Torb(a_i, self.M_tot())
     
     def initialize_spike(self, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc, r_t = -1, alpha  = 2, circular=0):
         
