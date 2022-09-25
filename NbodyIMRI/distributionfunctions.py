@@ -3,14 +3,17 @@ from scipy.special import gamma as Gamma_func
 from scipy.integrate import cumtrapz
 import sys
 
-import tools
-import constants as const
+from NbodyIMRI import tools
+import NbodyIMRI.constants as const
 from scipy.special import hyp2f1
 
 from abc import ABC
 
 
 """
+WARNING: Unlike the rest of the code, this module does not use the 'units' module.
+Instead, it uses an implicit system of units, as defined below:
+
 Units:
     - Masses in MSun
     - Times in Myr
@@ -23,7 +26,6 @@ Some definitions:
 """
 
 r_6 = 1e-6
-
 
 class SpikeDistribution(ABC):
     

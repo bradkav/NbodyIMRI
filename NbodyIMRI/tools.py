@@ -4,7 +4,7 @@ from scipy.integrate import cumtrapz
 import string
 import random
 
-import units as u
+from NbodyIMRI import units as u
 
 def inverse_transform_sample(integrand, x_min, x_max, N_samps=1, N_grid=1000, log=True):
     if (log == True):
@@ -44,10 +44,15 @@ def calc_orbital_elements(x, v, M_tot):
     a = (2/x_mag - v_mag**2/mu)**-1
         #https://astronomy.stackexchange.com/questions/29005/calculation-of-eccentricity-of-orbit-from-velocity-and-radius
     h = np.cross(x,v)
-    e_vec = np.cross(v,h)/mu - x/np.atleast_2d(x_mag).T
-    e = norm(e_vec)
+    h_mag = norm(h)
+    e = np.sqrt(1-np.clip(h_mag**2/(mu*a), 0, 1))
+    #e_vec = np.cross(v,h)/mu - x/np.atleast_2d(x_mag).T
+    #e = norm(e_vec)
         
     return a, e
+    
+def calc_Torb(a_i, M_tot):
+    return 2*np.pi*np.sqrt(a_i**3/(u.G_N*M_tot))
     
 def calc_rho_6(rho_sp, M_1, gamma):
     r_6   = 1e-6*u.pc

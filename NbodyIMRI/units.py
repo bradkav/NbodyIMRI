@@ -14,6 +14,7 @@ Myr    = 1e6*yr
 cm     = 1e-2*m
 km     = 1e3*m
 pc     = 3.08567758149137e16*m
+au     = 1.495978707e11*m
 
 #Constants
 G_N    = 4.30091e-3*(pc/Msun)*(km/s)**2
