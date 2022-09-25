@@ -387,8 +387,7 @@ def load_simulation_list():
     M_1     = load_entry(1)*u.Msun
     M_2     = load_entry(2)*u.Msun
     a_i     = load_entry(3)*tools.calc_risco(M_1)
-    #e_i     = load_entry(4)
-    e_i     = 0.0*a_i
+    e_i     = load_entry(4)
     N_DM    = load_entry(5, dtype=int)
     M_DM    = load_entry(6)*u.Msun
     Nstep_per_orb      = load_entry(7, dtype=int)
