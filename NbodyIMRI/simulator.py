@@ -135,18 +135,34 @@ class simulator():
         elif (self.soft_method == "plummer2"):
             acc_DM1 = -u.G_N*M1_eff*r1*(dx1/2)*(2*r1_sq + 5*self.r_soft_sq)*(r1_sq + self.r_soft_sq)**(-5/2)
             
-        elif (self.soft_method == "uniform"):
+        elif (self.soft_method == "uniform_old"):
             x = np.sqrt(r1_sq/self.r_soft_sq)
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
             inds = x < 1
             if (np.sum(inds) > 1):
                 inds = inds.flatten()
                 acc_DM1[inds] = -u.G_N*M1_eff*dx1[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq)
+
+        elif (self.soft_method == "uniform"):
+            x = np.sqrt(r1_sq/self.r_soft_sq)
+            acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
+            inds = x < 1
+            if (np.sum(inds) > 1):
+                inds = inds.flatten()
+                acc_DM1[inds] = -u.G_N*M1_eff*dx1[inds,:]*x[inds]/(self.r_soft_sq)
                 
         elif (self.soft_method == "truncate"):
             r1_sq = np.clip(r1_sq, self.r_soft_sq, 1e50)
             acc_DM1 = -u.G_N*M1_eff*dx1/r1_sq
-            
+
+        elif (self.soft_method == "empty_shell"):
+            x = np.sqrt(r1_sq/self.r_soft_sq)
+            acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
+            inds = x < 1
+            if (np.sum(inds) >= 1):
+                inds = inds.flatten()      
+                acc_DM1[inds] *= 0.0
+
         else:
             raise ValueError("Invalid softening method:" + self.soft_method)
         
@@ -164,7 +180,7 @@ class simulator():
             elif (self.soft_method == "plummer2"):
                 acc_DM2 = -u.G_N*M2_eff*r2*(dx2/2)*(2*r2_sq + 5*self.r_soft_sq)*(r2_sq + self.r_soft_sq)**(-5/2)
 
-            elif (self.soft_method == "uniform"):
+            elif (self.soft_method == "uniform_old"):
                 x = np.sqrt(r2_sq/self.r_soft_sq)
                 acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq)**-1
                 inds = x < 1
@@ -172,9 +188,26 @@ class simulator():
                     inds = inds.flatten()
                     acc_DM2[inds] = -u.G_N*M2_eff*dx2[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq)
 
+            elif (self.soft_method == "uniform"):
+                x = np.sqrt(r2_sq/self.r_soft_sq)
+                acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq)**-1
+                inds = x < 1
+                if (np.sum(inds) > 1):
+                    inds = inds.flatten()
+                    acc_DM2[inds] = -u.G_N*M2_eff*dx2[inds,:]*x[inds]/(self.r_soft_sq)
+
             elif (self.soft_method == "truncate"):
                 r2_sq = np.clip(r2_sq, self.r_soft_sq, 1e50)
                 acc_DM2 = -u.G_N*M2_eff*dx2/r2_sq
+
+            elif (self.soft_method == "empty_shell"):
+                x = np.sqrt(r2_sq/self.r_soft_sq)
+                acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq)**-1
+                inds = x < 1
+                if (np.sum(inds) >= 1):
+                    inds = inds.flatten()      
+                    acc_DM2[inds] *= 0.0
+
 
             else:
                 raise ValueError("Invalid softening method:" + self.soft_method)
@@ -201,7 +234,7 @@ class simulator():
         
     
             
-    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False):
+    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False):
         """
         Run the simulator, starting from the current state of particles in p, running for a time t_end.
         Times and timesteps are in physical times (as opposed to being in terms of number of orbits etc.)
@@ -226,6 +259,11 @@ class simulator():
         self.t_end   = t_end
         self.dt      = dt
         N_step = int(np.ceil(t_end/dt)) 
+        N_save = 100 #Save only every 100 timesteps
+        #N_save = 1
+        N_out = int(N_step/N_save)
+        N_update = 100_000 #Update the output file only every 100_000 steps
+        #N_update = 1
 
         #Determine initial orbital parameters of the system
         if (self.p.M_2 > 0):
@@ -244,8 +282,12 @@ class simulator():
         #Open output file
         if (save_to_file):
             fname = f"{NbodyIMRI.snapshot_dir}/{self.IDhash}.hdf5"
-            os.remove(fname)
-            f = self.open_outputfile(fname, N_step)
+            try:
+                os.remove(fname)
+                print("Old file removed successfully:", fname)
+            except: 
+                print("No old snapshot file found...")
+            f = self.open_outputfile(fname, N_out, save_DM_states)
             
         #Initialise lists to save the BH positions
         self.xBH1_list = np.zeros((N_step, 3))
@@ -253,19 +295,17 @@ class simulator():
     
         self.xBH2_list = np.zeros((N_step, 3))
         self.vBH2_list = np.zeros((N_step, 3))
-        self.ts        = np.linspace(0, t_end, N_step)
+        self.ts        = np.linspace(0, t_end, N_out)
         
         
         #Save the time steps and the initial DM configuration
         if (save_to_file):
             self.t_data[:] = 1.0*self.ts
         
-            self.xDM_i_data[:,:] = 1.0*self.p.xDM
-            self.vDM_i_data[:,:] = 1.0*self.p.vDM
+            if (save_DM_states):
+                self.xDM_i_data[:,:] = 1.0*self.p.xDM
+                self.vDM_i_data[:,:] = 1.0*self.p.vDM
         
-        
-        #Update every 100_000 steps
-        N_update  = 100_000
     
         #Define a dummy in case we're not using a progress bar
         stepper = lambda x: x
@@ -284,12 +324,12 @@ class simulator():
         
             #Update data saved in file
             if ((it%N_update == 0) and (save_to_file)):
-        
-                self.xBH1_data[:,:] = 1.0*self.xBH1_list
-                self.vBH1_data[:,:] = 1.0*self.vBH1_list
+                #print(N_step, N_save, N_out, N_update)
+                self.xBH1_data[:,:] = 1.0*self.xBH1_list[::N_save,:]
+                self.vBH1_data[:,:] = 1.0*self.vBH1_list[::N_save,:]
             
-                self.xBH2_data[:,:] = 1.0*self.xBH2_list
-                self.vBH2_data[:,:] = 1.0*self.vBH2_list     
+                self.xBH2_data[:,:] = 1.0*self.xBH2_list[::N_save,:]
+                self.vBH2_data[:,:] = 1.0*self.vBH2_list[::N_save,:]
             
             #Step forward by dt
             self.full_step(dt, method)
@@ -300,14 +340,15 @@ class simulator():
         
         #One final update of the output data   
         if (save_to_file):
-            self.xBH1_data[:,:] = 1.0*self.xBH1_list
-            self.vBH1_data[:,:] = 1.0*self.vBH1_list
+            self.xBH1_data[:,:] = 1.0*self.xBH1_list[::N_save,:]
+            self.vBH1_data[:,:] = 1.0*self.vBH1_list[::N_save,:]
     
-            self.xBH2_data[:,:] = 1.0*self.xBH2_list
-            self.vBH2_data[:,:] = 1.0*self.vBH2_list
+            self.xBH2_data[:,:] = 1.0*self.xBH2_list[::N_save,:]
+            self.vBH2_data[:,:] = 1.0*self.vBH2_list[::N_save,:]
     
-            self.xDM_f_data[:,:] = 1.0*self.p.xDM
-            self.vDM_f_data[:,:] = 1.0*self.p.vDM
+            if (save_DM_states):
+                self.xDM_f_data[:,:] = 1.0*self.p.xDM
+                self.vDM_f_data[:,:] = 1.0*self.p.vDM
     
         print("> Simulation completed.")
     
@@ -322,7 +363,7 @@ class simulator():
         
         
 
-    def open_outputfile(self, fname, N_step):
+    def open_outputfile(self, fname, N_step, save_DM_states):
         """
         ...
         
@@ -355,11 +396,12 @@ class simulator():
         self.xBH2_data = grp.create_dataset("xBH2", (N_step,3), dtype=datatype, compression="gzip")
         self.vBH2_data = grp.create_dataset("vBH2", (N_step,3), dtype=datatype, compression="gzip")
     
-        self.xDM_i_data = grp.create_dataset("xDM_i", (self.p.N_DM,3), dtype=datatype, compression="gzip")
-        self.xDM_f_data = grp.create_dataset("xDM_f", (self.p.N_DM,3), dtype=datatype, compression="gzip")
+        if (save_DM_states):
+            self.xDM_i_data = grp.create_dataset("xDM_i", (self.p.N_DM,3), dtype=datatype, compression="gzip")
+            self.xDM_f_data = grp.create_dataset("xDM_f", (self.p.N_DM,3), dtype=datatype, compression="gzip")
     
-        self.vDM_i_data = grp.create_dataset("vDM_i", (self.p.N_DM,3), dtype=datatype, compression="gzip")
-        self.vDM_f_data = grp.create_dataset("vDM_f", (self.p.N_DM,3), dtype=datatype, compression="gzip")
+            self.vDM_i_data = grp.create_dataset("vDM_i", (self.p.N_DM,3), dtype=datatype, compression="gzip")
+            self.vDM_f_data = grp.create_dataset("vDM_f", (self.p.N_DM,3), dtype=datatype, compression="gzip")
     
         return f
         
