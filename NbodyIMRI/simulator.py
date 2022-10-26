@@ -234,7 +234,7 @@ class simulator():
         
     
             
-    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False):
+    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=100):
         """
         Run the simulator, starting from the current state of particles in p, running for a time t_end.
         Times and timesteps are in physical times (as opposed to being in terms of number of orbits etc.)
@@ -259,7 +259,7 @@ class simulator():
         self.t_end   = t_end
         self.dt      = dt
         N_step = int(np.ceil(t_end/dt)) 
-        N_save = 100 #Save only every 100 timesteps
+        #N_save = 100 #Save only every 100 timesteps
         #N_save = 1
         N_out = int(N_step/N_save)
         N_update = 100_000 #Update the output file only every 100_000 steps
@@ -312,6 +312,7 @@ class simulator():
         if (show_progress):
             stepper = tqdm
         
+        #print("N_steps:", N_step)
         #Simulate for N_step time-steps
         for it in stepper(range(N_step)):
               
@@ -338,6 +339,7 @@ class simulator():
             if (self.check_state is not None):
                 self.check_state(self)
         
+
         #One final update of the output data   
         if (save_to_file):
             self.xBH1_data[:,:] = 1.0*self.xBH1_list[::N_save,:]
