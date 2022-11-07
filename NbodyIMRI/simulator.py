@@ -227,7 +227,7 @@ class simulator():
             self.p.dvdtBH1 = 0.0
         
         if (self.p.M_2 > 0):
-            self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - (self.p.M_DM/M2_eff)*np.sum(acc_DM2, axis=0)
+            self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - (1/M2_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM2, axis=0)
         else:
             self.p.dvdtBH2 = 0.0
         self.p.dvdtDM  = acc_DM1 + acc_DM2
@@ -382,7 +382,7 @@ class simulator():
         grp.attrs['a_i'] = a_i/u.pc
         grp.attrs['e_i'] = e_i
         grp.attrs['N_DM'] = self.p.N_DM
-        grp.attrs['M_DM'] = self.p.M_DM/u.Msun
+        grp.attrs['M_DM'] = self.p.M_DM[0]/u.Msun
         grp.attrs['r_soft'] = np.sqrt(self.r_soft_sq)/u.pc
         if (self.p.dynamic_BH):
             grp.attrs['dynamic'] = 1
@@ -418,7 +418,7 @@ class simulator():
         T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot()))
     
         meta_data = np.array([self.IDhash, self.p.M_1/u.Msun, self.p.M_2/u.Msun, 
-                            self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM/u.Msun, 
+                            self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM[0]/u.Msun, 
                             int(np.round(T_orb/self.dt)), int(np.round(self.t_end/T_orb)), np.sqrt(self.r_soft_sq)/u.pc, self.method,
                             self.p.rho_6/(u.Msun/u.pc**3), self.p.gamma_sp, self.p.alpha, self.p.r_t/u.pc])
                             

@@ -192,7 +192,7 @@ class particles():
         
         #self.M_tot = M_1 + M_2
         
-        self.M_DM = M_DM
+        self.M_DM = M_DM*np.ones(N_DM)
         self.N_DM = N_DM
             
         self.xBH1 = np.zeros((3), dtype=np.float64)
@@ -295,15 +295,15 @@ class particles():
             print(f">     M_2 [M_sun] = {self.M_2/u.Msun}")
             a, e = self.orbital_elements()
             print(f">     (a [pc], e) = ({a/u.pc}, {e})")
-        if (self.M_DM > 0):
+        if (np.sum(self.M_DM) > 0):
             print(" ")
             print(f">     N_DM = {self.N_DM}")
-            print(f">     M_DM [M_sun] = {self.M_DM/u.Msun}")
+            print(f">     M_DM [M_sun] = {self.M_DM[0]/u.Msun}")
             
     
     
     def plot(self):
-        if (self.M_DM > 0):    
+        if (np.sum(self.M_DM) > 0):    
             ncols = 3
         else:
             ncols = 2
@@ -313,7 +313,7 @@ class particles():
         axes = ax[:]
         #----------------------------------------
         
-        if (self.M_DM > 0):
+        if (np.sum(self.M_DM) > 0):
             axes[0].scatter(self.xDM[:,0]/u.pc, self.xDM[:,1]/u.pc, color='C0', marker='o', alpha=0.75)
         
         axes[0].scatter(self.xBH1[0]/u.pc, self.xBH1[1]/u.pc, color='k', marker='o', s=250)
@@ -330,7 +330,7 @@ class particles():
         
         #----------------------------------------
      
-        if (self.M_DM > 0):
+        if (np.sum(self.M_DM) > 0):
             axes[1].scatter(self.xDM[:,0]/u.pc, self.xDM[:,2]/u.pc, color='C0', marker='o', alpha=0.75)
      
         axes[1].scatter(self.xBH1[0]/u.pc, self.xBH1[2]/u.pc, color='k', marker='o', s=250)
@@ -347,7 +347,7 @@ class particles():
         axes[1].set_aspect('equal')
             
         #---------------------------------------
-        if (self.M_DM > 0):
+        if (np.sum(self.M_DM) > 0):
  
             r_vals = tools.norm(self.xDM - self.xBH1)
             axes[2].hist(np.log10(r_vals/u.pc), 50, density=True)
