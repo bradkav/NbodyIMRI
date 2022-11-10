@@ -281,8 +281,16 @@ class particles():
                     vhat = np.cos(phi)*e2 + np.sin(phi)*e3
                     self.vDM[i,:] = (SpikeDF.v_max(r[i])/np.sqrt(2))*vhat * u.pc/u.Myr
                     
-            
-                
+                if (circular == 2):
+                    zhat = np.array([0, 0, 1])
+                    chat = np.cross(rhat, zhat)
+                    chat /= np.sqrt(np.dot(chat,chat))
+                    v1 = tools.get_random_direction()
+                    v2 = np.dot(v1, rhat)*rhat
+                    v3 = np.dot(v1, chat)*chat
+                    u = v1 - v2 - v3
+                    vhat = u/np.sqrt(np.dot(u,u))
+                    self.vDM[i,:] = (SpikeDF.v_max(r[i])/np.sqrt(2))*vhat * u.pc/u.Myr
                     
     
             self.xDM += self.xBH1
