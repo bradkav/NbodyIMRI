@@ -288,8 +288,8 @@ class particles():
                     v1 = tools.get_random_direction()
                     v2 = np.dot(v1, rhat)*rhat
                     v3 = np.dot(v1, chat)*chat
-                    u = v1 - v2 - v3
-                    vhat = u/np.sqrt(np.dot(u,u))
+                    vnew = v1 - v2 - v3
+                    vhat = vnew/np.sqrt(np.dot(vnew,vnew))
                     self.vDM[i,:] = (SpikeDF.v_max(r[i])/np.sqrt(2))*vhat * u.pc/u.Myr
                     
     
