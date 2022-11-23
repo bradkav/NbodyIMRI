@@ -116,7 +116,7 @@ def show_simulation_summary(IDhash):
     
     print(f"> File: {IDhash}")
     print(f">    (M_1, M_2) = ({M_1/u.Msun}, {M_2/u.Msun}) Msun")
-    print(f">    (a_i, e_i) = ({a_i/u.pc} pc, {e_i[0]})")
+    print(f">    (a_i, e_i) = ({a_i/u.pc} pc, {e_i})")
     
     print(f">    N_DM = {N_DM}")
     print(f">    r_soft = {r_soft/u.pc} pc")
@@ -189,16 +189,15 @@ def plot_trajectory(IDhash):
     axes[0].plot(t, (a - a[0])/a[0])
     axes[0].axhline(0, linestyle='--', color='grey')
     
-    axes[0].xlabel(r"$t$ [s]")
-    axes[0].ylabel(r"$\Delta a/a_i$")
+    axes[0].set_xlabel(r"$t$ [s]")
+    axes[0].set_ylabel(r"$\Delta a/a_i$")
+    axes[0].set_title(IDhash)
     
-    axes[0].plot(t, e - e[0])
-    axes[0].axhline(e[0], linestyle='--', color='grey')
+    axes[1].plot(t, e - e[0])
+    axes[1].axhline(e[0], linestyle='--', color='grey')
     
-    axes[0].xlabel(r"$t$ [s]")
-    axes[0].ylabel(r"$\Delta e$")
-    
-    fig.title(IDhash)
+    axes[1].set_xlabel(r"$t$ [s]")
+    axes[1].set_ylabel(r"$\Delta e$")
     
     return fig
     

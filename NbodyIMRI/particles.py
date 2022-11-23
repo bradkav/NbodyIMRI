@@ -12,6 +12,7 @@ from NbodyIMRI import distributionfunctions as DF
 from NbodyIMRI import tools
 from NbodyIMRI import units as u
 
+import random
 
 import h5py
 import copy
@@ -288,9 +289,12 @@ class particles():
                     v1 = tools.get_random_direction()
                     v2 = np.dot(v1, rhat)*rhat
                     v3 = np.dot(v1, chat)*chat
-                    u = v1 - v2 - v3
-                    vhat = u/np.sqrt(np.dot(u,u))
-                    self.vDM[i,:] = (SpikeDF.v_max(r[i])/np.sqrt(2))*vhat * u.pc/u.Myr
+                    vnew = v1 - v2 - v3
+                    vhat = vnew/np.sqrt(np.dot(vnew,vnew))
+                    
+                    sgn = 2*(random.randint(0,1) - 0.5)
+                    
+                    self.vDM[i,:] = sgn*(SpikeDF.v_max(r[i])/np.sqrt(2))*vhat * u.pc/u.Myr
                     
     
             self.xDM += self.xBH1
