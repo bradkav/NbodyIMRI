@@ -291,9 +291,8 @@ class particles():
                     v3 = np.dot(v1, chat)*chat
                     vnew = v1 - v2 - v3
                     vhat = vnew/np.sqrt(np.dot(vnew,vnew))
-                    
+
                     sgn = 2*(random.randint(0,1) - 0.5)
-                    
                     self.vDM[i,:] = sgn*(SpikeDF.v_max(r[i])/np.sqrt(2))*vhat * u.pc/u.Myr
                     
     
