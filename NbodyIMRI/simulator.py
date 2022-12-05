@@ -296,11 +296,15 @@ class simulator():
         self.xBH2_list = np.zeros((N_step, 3))
         self.vBH2_list = np.zeros((N_step, 3))
         self.ts        = np.linspace(0, t_end, N_out)
+        self.M1_list   = np.zeros(N_step)
+        self.M2_list   = np.zeros(N_step)
         
         
         #Save the time steps and the initial DM configuration
         if (save_to_file):
             self.t_data[:] = 1.0*self.ts
+            self.M1_list[0] = self.p.M_1
+            self.M2_list[0] = self.p.M_2
         
             if (save_DM_states):
                 self.xDM_i_data[:,:] = 1.0*self.p.xDM
@@ -317,6 +321,9 @@ class simulator():
         for it in stepper(range(N_step)):
               
             #Save current binary configuration to array
+            self.M1_list[it]     = self.p.M_1
+            self.M2_list[it]     = self.p.M_2
+            
             self.xBH1_list[it,:] = self.p.xBH1
             self.vBH1_list[it,:] = self.p.vBH1
         
@@ -326,6 +333,9 @@ class simulator():
             #Update data saved in file
             if ((it%N_update == 0) and (save_to_file)):
                 #print(N_step, N_save, N_out, N_update)
+                self.M_1_data[:]    = 1.0*self.M1_list[::N_save]
+                self.M_2_data[:]    = 1.0*self.M2_list[::N_save]
+                
                 self.xBH1_data[:,:] = 1.0*self.xBH1_list[::N_save,:]
                 self.vBH1_data[:,:] = 1.0*self.vBH1_list[::N_save,:]
             
@@ -342,6 +352,9 @@ class simulator():
 
         #One final update of the output data   
         if (save_to_file):
+            self.M_1_data[:]    = 1.0*self.M1_list[::N_save]
+            self.M_2_data[:]    = 1.0*self.M2_list[::N_save]
+            
             self.xBH1_data[:,:] = 1.0*self.xBH1_list[::N_save,:]
             self.vBH1_data[:,:] = 1.0*self.vBH1_list[::N_save,:]
     
@@ -392,11 +405,16 @@ class simulator():
     
         datatype = np.float64
         self.t_data   = grp.create_dataset("t", (N_step,), dtype=datatype, compression="gzip")
+        self.M_1_data = grp.create_dataset("M_1", (N_step,), dtype=datatype, compression="gzip")
+        self.M_2_data = grp.create_dataset("M_2", (N_step,), dtype=datatype, compression="gzip")
+        
         self.xBH1_data = grp.create_dataset("xBH1", (N_step,3), dtype=datatype, compression="gzip")
         self.vBH1_data = grp.create_dataset("vBH1", (N_step,3), dtype=datatype, compression="gzip")
     
         self.xBH2_data = grp.create_dataset("xBH2", (N_step,3), dtype=datatype, compression="gzip")
         self.vBH2_data = grp.create_dataset("vBH2", (N_step,3), dtype=datatype, compression="gzip")
+    
+        
     
         if (save_DM_states):
             self.xDM_i_data = grp.create_dataset("xDM_i", (self.p.N_DM,3), dtype=datatype, compression="gzip")
@@ -444,7 +462,7 @@ class simulator():
         else:
             xBH_list = self.xBH1_list - self.xBH2_list
             vBH_list = self.vBH1_list - self.vBH2_list
-            a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, self.p.M_tot())
+            a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, self.M1_list + self.M2_list)
             
             delta_a = (a_list - a_list[0])/a_list
             delta_e = (e_list - e_list[0])

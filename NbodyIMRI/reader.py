@@ -44,6 +44,9 @@ def load_trajectory(IDhash):
     xBH_list = xBH2_list - xBH1_list
     vBH_list = vBH2_list - vBH1_list
     
+    M1_list  = np.array(f['data']['M_1'])
+    M2_list  = np.array(f['data']['M_2'])
+    
     N_step = len(ts-1)
     
     M_1 = f['data'].attrs["M_1"]*u.Msun
@@ -55,12 +58,13 @@ def load_trajectory(IDhash):
     f.close()
     
     #if (dynamic_BH == 1):
-    M_tot = M_1 + M_2
+    M_tot_i = M_1 + M_2
+    M_tot_list = M1_list + M1_list
     #else:
     #    M_tot = 1.0*M_1
-    T_orb = 2 * np.pi * np.sqrt(a_i ** 3 / (u.G_N*M_tot))
+    T_orb = 2 * np.pi * np.sqrt(a_i ** 3 / (u.G_N*M_tot_list))
     
-    a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, M_tot)
+    a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, M_tot_list)
     
     #return ts/T_orb, a_list, e_list
     return ts, a_list, e_list
