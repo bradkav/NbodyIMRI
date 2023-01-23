@@ -63,8 +63,11 @@ def load_trajectory(IDhash):
     #else:
     #    M_tot = 1.0*M_1
     T_orb = 2 * np.pi * np.sqrt(a_i ** 3 / (u.G_N*M_tot_list))
+
     
     a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, M_tot_list)
+    
+    
     
     #return ts/T_orb, a_list, e_list
     return ts, a_list, e_list
@@ -95,6 +98,7 @@ def load_DMparticles(IDhash, which="initial"):
     vDM_list =  np.array(f['data']['vDM_' + tag])
     
     return xDM_list, vDM_list
+
     
 def show_simulation_summary(IDhash):
     """
