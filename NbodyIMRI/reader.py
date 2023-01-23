@@ -59,7 +59,7 @@ def load_trajectory(IDhash):
     
     #if (dynamic_BH == 1):
     M_tot_i = M_1 + M_2
-    M_tot_list = M1_list + M1_list
+    M_tot_list = M1_list + M2_list
     #else:
     #    M_tot = 1.0*M_1
     T_orb = 2 * np.pi * np.sqrt(a_i ** 3 / (u.G_N*M_tot_list))
