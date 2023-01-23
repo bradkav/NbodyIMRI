@@ -36,10 +36,10 @@ def generate_hash(length=5):
 def norm(x):
     return np.sqrt(np.sum(x**2, axis=-1))
 
-def calc_orbital_elements(x, v, M_tot):
+def calc_orbital_elements(x, v, Mtot):
     x_mag = norm(x)
     v_mag = norm(v)
-    mu = u.G_N*M_tot
+    mu = u.G_N*Mtot
 
     a = (2/x_mag - v_mag**2/mu)**-1
         #https://astronomy.stackexchange.com/questions/29005/calculation-of-eccentricity-of-orbit-from-velocity-and-radius

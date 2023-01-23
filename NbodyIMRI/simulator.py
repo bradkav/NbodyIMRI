@@ -271,7 +271,8 @@ class simulator():
             a_i, e_i = self.p.orbital_elements()
             self.a_i = float(a_i)
             self.e_i = float(e_i)
-            T_orb    = self.p.T_orb()   
+            T_orb    = self.p.T_orb()
+            self.M_2_ini = self.p.M_2
         else:
             self.a_i = 0
             self.e_i = 0    
@@ -364,6 +365,8 @@ class simulator():
             if (save_DM_states):
                 self.xDM_f_data[:,:] = 1.0*self.p.xDM
                 self.vDM_f_data[:,:] = 1.0*self.p.vDM
+                
+                self.M_DM_data[:] =  1.0*self.p.M_DM
     
         print("> Simulation completed.")
     
@@ -386,7 +389,7 @@ class simulator():
         f = h5py.File(fname, "w")
         grp = f.create_group("data")
         grp.attrs['M_1'] = self.p.M_1/u.Msun
-        grp.attrs['M_2'] = self.p.M_2/u.Msun
+        grp.attrs['M_2'] = self.M_2_ini/u.Msun
         
         a_i, e_i = self.p.orbital_elements()
         
@@ -422,6 +425,8 @@ class simulator():
     
             self.vDM_i_data = grp.create_dataset("vDM_i", (self.p.N_DM,3), dtype=datatype, compression="gzip")
             self.vDM_f_data = grp.create_dataset("vDM_f", (self.p.N_DM,3), dtype=datatype, compression="gzip")
+            
+            self.M_DM_data = grp.create_dataset("M_DM", (self.p.N_DM,), dtype=datatype, compression="gzip")
     
         return f
         
@@ -435,7 +440,7 @@ class simulator():
     
         T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot()))
     
-        meta_data = np.array([self.IDhash, self.p.M_1/u.Msun, self.p.M_2/u.Msun, 
+        meta_data = np.array([self.IDhash, self.p.M_1/u.Msun, self.M_2_ini/u.Msun, 
                             self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM[0]/u.Msun, 
                             int(np.round(T_orb/self.dt)), int(np.round(self.t_end/T_orb)), np.sqrt(self.r_soft_sq)/u.pc, self.method,
                             self.p.rho_6/(u.Msun/u.pc**3), self.p.gamma_sp, self.p.alpha, self.p.r_t/u.pc])
