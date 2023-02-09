@@ -258,6 +258,7 @@ class simulator():
         #Determine total number of steps
         self.t_end   = t_end
         self.dt      = dt
+        self.current_step = 0
         N_step = int(np.ceil(t_end/dt)) 
         #N_save = 100 #Save only every 100 timesteps
         #N_save = 1
@@ -345,6 +346,10 @@ class simulator():
             
             #Step forward by dt
             self.full_step(dt, method)
+            
+            #Increment the current step number (this is primarily so that the 
+            #check_state function has some idea about how far in the simulation we are...)
+            self.current_step += 1
             
             #Do any checks of the state of the system in between timesteps
             if (self.check_state is not None):
