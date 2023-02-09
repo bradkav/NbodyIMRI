@@ -234,7 +234,7 @@ class simulator():
         
     
             
-    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=100):
+    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=1):
         """
         Run the simulator, starting from the current state of particles in p, running for a time t_end.
         Times and timesteps are in physical times (as opposed to being in terms of number of orbits etc.)
@@ -297,14 +297,14 @@ class simulator():
     
         self.xBH2_list = np.zeros((N_step, 3))
         self.vBH2_list = np.zeros((N_step, 3))
-        self.ts        = np.linspace(0, t_end, N_out)
+        self.ts        = np.linspace(0, t_end, N_step)
         self.M1_list   = np.zeros(N_step)
         self.M2_list   = np.zeros(N_step)
         
         
         #Save the time steps and the initial DM configuration
         if (save_to_file):
-            self.t_data[:] = 1.0*self.ts
+            self.t_data[:] = 1.0*self.ts[::N_save]
             self.M1_list[0] = self.p.M_1
             self.M2_list[0] = self.p.M_2
         

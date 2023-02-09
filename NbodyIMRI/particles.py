@@ -11,6 +11,7 @@ from scipy import signal
 from NbodyIMRI import distributionfunctions as DF
 from NbodyIMRI import tools
 from NbodyIMRI import units as u
+import NbodyIMRI
 
 import random
 
@@ -19,7 +20,7 @@ import copy
 
 
 
-def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
+def load_particles_from_file(IDhash, which="initial"):
     """
     Load a particles object using data from an NbodyIMRI output file.
     
@@ -32,7 +33,7 @@ def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
         p (particles): a `particles` object containing the state of the system from file
     
     """
-    fname = join(snap_shot_dir, IDhash) + ".hdf5"
+    fname = join(NbodyIMRI.snapshot_dir, IDhash) + ".hdf5"
     f = h5py.File(fname, 'r')
     M_1 = f['data'].attrs["M_1"]*u.Msun
     M_2 = f['data'].attrs["M_2"]*u.Msun
