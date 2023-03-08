@@ -40,7 +40,7 @@ alpha = 2
 
 print("> Initialising system...")
 
-p_dressed_binary = particles.particles_in_binary(M_1, M_2, a_i, e_i, N_DM = N_DM, r_max = 1.0*u.pc, rho_6=rho_6, r_t=r_t, alpha=alpha,dynamic_BH=True, circular = 1)
+p_dressed_binary = particles.particles_in_binary(M_1, M_2, a_i, e_i, N_DM = N_DM, r_max = 1.0*u.pc, rho_6=rho_6, r_t=r_t, alpha=alpha,dynamic_BH=True, circular = 0)
 
 sim = simulator.simulator(p_dressed_binary, soft_method="empty_shell")
 
@@ -54,7 +54,7 @@ sim.r_soft_sq = eps**2
 
 
 T_orb = sim.p.T_orb()
-N_step_per_orb = 500
+N_step_per_orb = 10000
 
 N_orb = args.N_orb
 t_end = T_orb*N_orb
@@ -62,6 +62,6 @@ dt    = T_orb/N_step_per_orb
 
 print("> Running simulation...")
 
-sim.run_simulation(dt, t_end, method='PEFRL', save_to_file = True, add_to_list=True, save_DM_states=False)
+sim.run_simulation(dt, t_end, method='PEFRL', save_to_file = True, add_to_list=True, save_DM_states=False, N_save=1)
 
 print("> Simulation Complete:", sim.IDhash)

@@ -273,10 +273,11 @@ class simulator():
             self.a_i = float(a_i)
             self.e_i = float(e_i)
             T_orb    = self.p.T_orb()
-            self.M_2_ini = self.p.M_2
         else:
             self.a_i = 0
             self.e_i = 0    
+
+        self.M_2_ini = self.p.M_2
         
         self.method = method
         self.finished = False

@@ -43,17 +43,22 @@ def load_trajectory(IDhash):
     
     xBH_list = xBH2_list - xBH1_list
     vBH_list = vBH2_list - vBH1_list
-    
-    M1_list  = np.array(f['data']['M_1'])
-    M2_list  = np.array(f['data']['M_2'])
-    
-    N_step = len(ts-1)
+
     
     M_1 = f['data'].attrs["M_1"]*u.Msun
     M_2 = f['data'].attrs["M_2"]*u.Msun
     a_i = f['data'].attrs["a_i"]*u.pc
     dynamic_BH = f['data'].attrs["dynamic"]
 
+    try:
+        M1_list  = np.array(f['data']['M_1'])
+        M2_list  = np.array(f['data']['M_2'])
+    except:
+        M1_list = M_1*np.ones_like(ts)
+        M2_list = M_2*np.ones_like(ts)
+
+    N_step = len(ts-1)
+    
     
     f.close()
     
