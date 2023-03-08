@@ -11,6 +11,7 @@ from scipy import signal
 from NbodyIMRI import distributionfunctions as DF
 from NbodyIMRI import tools
 from NbodyIMRI import units as u
+import NbodyIMRI
 
 import random
 
@@ -19,7 +20,7 @@ import copy
 
 
 
-def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
+def load_particles_from_file(IDhash, which="initial"):
     """
     Load a particles object using data from an NbodyIMRI output file.
     
@@ -32,12 +33,12 @@ def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
         p (particles): a `particles` object containing the state of the system from file
     
     """
-    fname = join(snap_shot_dir, IDhash) + ".hdf5"
+    fname = join(NbodyIMRI.snapshot_dir, IDhash) + ".hdf5"
     f = h5py.File(fname, 'r')
     M_1 = f['data'].attrs["M_1"]*u.Msun
     M_2 = f['data'].attrs["M_2"]*u.Msun
     N_DM = f['data'].attrs["N_DM"]
-    M_DM = f['data'].attrs["M_DM"]*u.Msun
+    M_DM_i = f['data'].attrs["M_DM"]*u.Msun
     dynamic = f['data'].attrs["dynamic"]
     if (dynamic == 1):
         dynamic_BH = True
@@ -48,7 +49,7 @@ def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
         N_DM = 2 #Keep N_DM = 2 so that all the arrays work as expected...
         M_DM = 0.0
     
-    p = particles(M_1, M_2, N_DM=N_DM, M_DM=M_DM, dynamic_BH=dynamic_BH)
+    p = particles(M_1, M_2, N_DM=N_DM, M_DM=M_DM_i, dynamic_BH=dynamic_BH)
     
     if (which == "initial"):
         p.xBH1 = np.array(f['data']['xBH1'])[1,:]
@@ -59,6 +60,8 @@ def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
     
         p.xDM  = np.array(f['data']['xDM_i'])
         p.vDM  = np.array(f['data']['vDM_i'])
+        
+        
     elif (which == "final"):
         p.xBH1 = np.array(f['data']['xBH1'])[-1,:]
         p.vBH1 = np.array(f['data']['vBH1'])[-1,:]
@@ -68,6 +71,8 @@ def load_particles_from_file(snap_shot_dir, IDhash, which="initial"):
     
         p.xDM  = np.array(f['data']['xDM_f'])
         p.vDM  = np.array(f['data']['vDM_f'])
+    
+        p.M_DM = np.array(f['data']['M_DM'])
     
     return p
     

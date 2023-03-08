@@ -72,8 +72,7 @@ def load_trajectory(IDhash):
     
     a_list, e_list = tools.calc_orbital_elements(xBH_list, vBH_list, M_tot_list)
     
-    
-    
+
     #return ts/T_orb, a_list, e_list
     return ts, a_list, e_list
     
@@ -101,6 +100,7 @@ def load_DMparticles(IDhash, which="initial"):
         
     xDM_list =  np.array(f['data']['xDM_' + tag])
     vDM_list =  np.array(f['data']['vDM_' + tag])
+    
     
     return xDM_list, vDM_list
 
