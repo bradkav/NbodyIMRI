@@ -41,7 +41,7 @@ class simulator():
         r_soft_sq (float)   : The square of the softening length to be used for the DM particles (the BH-BH forces are not softened)
         soft_method (string): Softening method to be used. Options are: "plummer", "plummer2", "uniform", "truncate". 
                             Default is "uniform" which computes the softening assuming that each DM particle is a finite sphere of uniform density.
-        IDhash (string)     : A hash made up of 5 hexadecimal digits which identifies the simulation (and the output files). This is generated on instantiation of the class. 
+        IDhash (string)     : A hash made up of 5 hexadecimal digits which identifies the simulation (and the output files). This is generated and saved when he simulation is run.
         check_state (function): A function which will be called in between each timestep to check the state of the simulation and perform any required operations. 
                                 (For example, removing certain particles). Must have the signature `check_state(simulator)`. Default is None. 
     
@@ -51,7 +51,6 @@ class simulator():
             
         self.p = copy.deepcopy(particle_set)
         self.r_soft_sq = r_soft_sq
-        self.IDhash = tools.generate_hash()    
         self.soft_method = soft_method    
         self.check_state = check_state
                     
@@ -234,11 +233,11 @@ class simulator():
         
     
             
-    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=1):
+    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=1, label=None):
         """
         Run the simulator, starting from the current state of particles in p, running for a time t_end.
         Times and timesteps are in physical times (as opposed to being in terms of number of orbits etc.)
-        BEWARE: run_simulation will erase a previous version of the simulation with the same hashID before starting.
+        BEWARE: run_simulation will erase a previous version of the simulation with the same IDhash before starting.
         
         Parameters:
             dt (float)      : Size of the individual timesteps
@@ -247,6 +246,9 @@ class simulator():
             save_to_file (bool):    Set to True in order to output the simulation data to file. Default = False.
             add_to_list (bool):     Set to True in order to save metadata about the simulation to `SimulationList.txt`. Default = False. 
             show_progress (bool):   Set to True in order to show a progress bar during the simulation. Default = False
+            save_DM_states (bool):  Set to True in order to save the initial and final configuration of the DM particles in the output. Default = False
+            N_save (int):    Number of time steps in between saving the data to file. Default = 1
+            label (str):    String to be used in the name of the output file (along with the IDhash). 
         
         Returns:
             None
@@ -259,6 +261,14 @@ class simulator():
         self.t_end   = t_end
         self.dt      = dt
         self.current_step = 0
+        self.runID   = label
+        self.IDhash = tools.generate_hash() 
+        
+        if (self.runID is None):
+            self.fileID = self.IDhash
+        else:
+            self.fileID = f"{self.runID}_{self.IDhash}"
+            
         N_step = int(np.ceil(t_end/dt)) 
         #N_save = 100 #Save only every 100 timesteps
         #N_save = 1
@@ -284,7 +294,8 @@ class simulator():
         
         #Open output file
         if (save_to_file):
-            fname = f"{NbodyIMRI.snapshot_dir}/{self.IDhash}.hdf5"
+            fname = f"{NbodyIMRI.snapshot_dir}/{self.fileID}.hdf5"
+    
             try:
                 os.remove(fname)
                 print("Old file removed successfully:", fname)
@@ -442,11 +453,11 @@ class simulator():
         """
         
         listfile = f'{NbodyIMRI.snapshot_dir}/SimulationList.txt'
-        hdrtxt = "Columns: IDhash, M_1/MSUN, M_2/MSUN, a_i/r_isco(M1), e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
+        hdrtxt = "Columns: FileID, M_1/MSUN, M_2/MSUN, a_i/r_isco(M1), e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
     
         T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot()))
     
-        meta_data = np.array([self.IDhash, self.p.M_1/u.Msun, self.M_2_ini/u.Msun, 
+        meta_data = np.array([self.fileID, self.p.M_1/u.Msun, self.M_2_ini/u.Msun, 
                             self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM[0]/u.Msun, 
                             int(np.round(T_orb/self.dt)), int(np.round(self.t_end/T_orb)), np.sqrt(self.r_soft_sq)/u.pc, self.method,
                             self.p.rho_6/(u.Msun/u.pc**3), self.p.gamma_sp, self.p.alpha, self.p.r_t/u.pc])
@@ -491,7 +502,7 @@ class simulator():
             axes[1].set_xlabel(r"$t$ [s]")
             axes[1].set_ylabel(r"$\Delta e$")   
 
-            #plt.title(IDhash)
+            #plt.title(self.fileID)
             plt.tight_layout()
             
             plt.show()

@@ -16,15 +16,25 @@ import NbodyIMRI
 import h5py
 import copy
 
+def open_file_for_read(fileID):
+    """
+    Open an output file in order to be read (taking care of the correct directory structure and file endings)
+    
+    Parameters:
+        fileID (string):    fileID of the file you'd like to load.
+    """
+    fname = join(NbodyIMRI.snapshot_dir, fileID)
+    if not fname.endswith(".hdf5"):
+        fname += ".hdf5"
+    return h5py.File(fname, 'r')
 
 
-
-def load_trajectory(IDhash):
+def load_trajectory(fileID):
     """
     Load a simulation output file and return the binary trajectory (semi-major axis and eccentricity as a function of time)
     
     Parameters:
-        IDhash (string):    ID hash of the file you'd like to load.
+        fileID (string):    fileID of the file you'd like to load.
     
     Returns:
         t (array_like): Output timesteps from the simulation.
@@ -33,7 +43,8 @@ def load_trajectory(IDhash):
     
     """
     
-    f = h5py.File(f"{NbodyIMRI.snapshot_dir}/{IDhash}.hdf5", 'r')
+    f = open_file_for_read(fileID)
+    
     ts       = np.array(f['data']['t'])
     xBH1_list = np.array(f['data']['xBH1'])
     vBH1_list = np.array(f['data']['vBH1'])
@@ -78,12 +89,12 @@ def load_trajectory(IDhash):
     
     
     
-def load_DMparticles(IDhash, which="initial"):
+def load_DMparticles(fileID, which="initial"):
     """
     Load the configuration of the DM particles. 
     
     Parameters:
-        IDhash (string):    ID hash of the file you'd like to load.
+        fileID (string):    file ID string of the file you'd like to load.
         which (string): Determine whether to load "initial" or "final" configuration of DM particles form the file. 
     
     Returns:
@@ -91,7 +102,7 @@ def load_DMparticles(IDhash, which="initial"):
         vDM (2d array): Velocities of DM particles (N_DM, 3)
     """
     
-    f = h5py.File(f"{NbodyIMRI.snapshot_dir}/{IDhash}.hdf5", 'r')
+    f = open_file_for_read(fileID)
     
     if (which == "final"):
         tag = "f"
@@ -105,16 +116,17 @@ def load_DMparticles(IDhash, which="initial"):
     return xDM_list, vDM_list
 
     
-def show_simulation_summary(IDhash):
+def show_simulation_summary(fileID):
     """
     Print details about the simulation. 
     
     Parameters:
-        IDhash (string):    ID hash of the file you'd like to load.
+        fileID (string):    ID string of file you'd like to load.
     
     """
     
-    f = h5py.File(f"{NbodyIMRI.snapshot_dir}/{IDhash}.hdf5", 'r')
+    f = open_file_for_read(fileID)
+        
     M_1 = f['data'].attrs["M_1"]*u.Msun
     M_2 = f['data'].attrs["M_2"]*u.Msun
     a_i = f['data'].attrs["a_i"]*u.pc
@@ -127,7 +139,7 @@ def show_simulation_summary(IDhash):
     
     f.close()
     
-    print(f"> File: {IDhash}")
+    print(f"> File: {fileID}")
     print(f">    (M_1, M_2) = ({M_1/u.Msun}, {M_2/u.Msun}) Msun")
     print(f">    (a_i, e_i) = ({a_i/u.pc} pc, {e_i})")
     
@@ -192,8 +204,8 @@ def load_simulation_list():
     return sim_dict
     
 
-def plot_trajectory(IDhash):
-    t, a, e = load_trajectory(IDhash)
+def plot_trajectory(fileID):
+    t, a, e = load_trajectory(fileID)
     
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(11, 5))
     
@@ -204,7 +216,7 @@ def plot_trajectory(IDhash):
     
     axes[0].set_xlabel(r"$t$ [s]")
     axes[0].set_ylabel(r"$\Delta a/a_i$")
-    axes[0].set_title(IDhash)
+    axes[0].set_title(fileID)
     
     axes[1].plot(t, e - e[0])
     axes[1].axhline(e[0], linestyle='--', color='grey')
