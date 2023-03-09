@@ -53,6 +53,8 @@ class simulator():
         self.r_soft_sq = r_soft_sq
         self.soft_method = soft_method    
         self.check_state = check_state
+        self.background_field = None
+        
                     
             
     def full_step(self, dt, method="PEFRL"):
@@ -230,6 +232,12 @@ class simulator():
         else:
             self.p.dvdtBH2 = 0.0
         self.p.dvdtDM  = acc_DM1 + acc_DM2
+        
+        #Now, if a background force field has been set, calculate the acceleration
+        if self.background_field is not None:
+            self.p.dvdtBH1 += self.background_field(self.p.xBH1)
+            self.p.dvdtBH2 += self.background_field(self.p.xBH2)
+            self.p.dvdtDM  += self.background_field(self.p.xDM)
         
     
             

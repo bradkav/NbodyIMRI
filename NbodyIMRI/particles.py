@@ -209,6 +209,7 @@ class particles():
         
         
         plt.tight_layout()
+        return fig, ax
 
 
 def load_particles_from_file(fileID, which="initial"):
