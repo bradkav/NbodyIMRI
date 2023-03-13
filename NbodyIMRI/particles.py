@@ -129,7 +129,6 @@ class particles():
                     sgn = 2*(random.randint(0,1) - 0.5)
                     self.vDM[i,:] = sgn*(SpikeDF.v_max(r[i])/np.sqrt(2))*vhat * u.pc/u.Myr
                     
-    
             self.xDM += self.xBH1
             self.vDM += self.vBH1
     
@@ -209,6 +208,7 @@ class particles():
         
         
         plt.tight_layout()
+        return fig, ax
 
 
 def load_particles_from_file(fileID, which="initial"):
@@ -324,7 +324,7 @@ def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_
     
     
     
-def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, dynamic_BH=True, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_t = -1, alpha = 2, circular = 0, include_DM_mass=False):
+def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, dynamic_BH=True, rho_6=1e16*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_t = -1, alpha = 2, circular = 0, include_DM_mass=False):
     """
     Initialise a `particles` object which consists of a BH binary, which may be surrounded by a DM halo.
     
@@ -370,13 +370,15 @@ def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, dynamic_BH=True, rho_6=1
     r_i = a_i * ( 1 + e_i)
     
     if (include_DM_mass):
-        mu = u.G_N*(p.M_tot() + SpikeDF.M_DM_ini(a_i/u.pc)*u.Msun)
+        M_tot = p.M_tot() + SpikeDF.M_DM_ini(a_i/u.pc)*u.Msun
     else:
-        mu = u.G_N*p.M_tot()
+        M_tot = p.M_tot()
+        
+    mu = u.G_N*M_tot
     v_i = np.sqrt( mu * (2.0/r_i - 1.0/a_i) )
     
     if (dynamic_BH):
-        factor = M_2/p.M_tot()
+        factor = M_2/M_tot
     else:
         factor = 0
             
