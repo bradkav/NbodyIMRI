@@ -8,7 +8,6 @@ import numpy as np
 from tqdm import tqdm
 from scipy import signal
 
-from NbodyIMRI import distributionfunctions as DF
 from NbodyIMRI import tools, particles
 from NbodyIMRI import units as u
 import NbodyIMRI

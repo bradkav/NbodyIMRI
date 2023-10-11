@@ -8,7 +8,6 @@ import numpy as np
 from tqdm import tqdm
 from scipy import signal
 
-from NbodyIMRI import distributionfunctions as DF
 from NbodyIMRI import tools, particles
 from NbodyIMRI import units as u
 import NbodyIMRI
@@ -47,10 +46,13 @@ class simulator():
     
     """
     
-    def __init__(self, particle_set, r_soft_sq = 0.0, soft_method="uniform", check_state = None):
+    def __init__(self, particle_set, r_soft_sq = 0.0, r_soft_sq1 = -1, soft_method="uniform", check_state = None):
             
         self.p = copy.deepcopy(particle_set)
         self.r_soft_sq = r_soft_sq
+        self.r_soft_sq1 = r_soft_sq1
+        if (self.r_soft_sq1 < 0):
+            self.r_soft_sq1 = 1.0*r_soft_sq
         self.soft_method = soft_method    
         self.soft_method1 = "uniform"
         self.check_state = check_state
@@ -127,38 +129,40 @@ class simulator():
             M1_eff  = self.p.M_1
             M2_eff  = self.p.M_2
         else:
+            #M1_eff  = self.p.M_1
+            #M2_eff  = self.p.M_2
             M1_eff  = self.p.M_1 + self.p.M_2
             M2_eff  = (self.p.M_1*self.p.M_2)/(self.p.M_1 + self.p.M_2)
         
         #Calculate forces (including softening)
         if (self.soft_method1 == "plummer"):
-            acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq + self.r_soft_sq)**-1
+            acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq + self.r_soft_sq1)**-1
             
         elif (self.soft_method1 == "plummer2"):
-            acc_DM1 = -u.G_N*M1_eff*r1*(dx1/2)*(2*r1_sq + 5*self.r_soft_sq)*(r1_sq + self.r_soft_sq)**(-5/2)
+            acc_DM1 = -u.G_N*M1_eff*r1*(dx1/2)*(2*r1_sq + 5*self.r_soft_sq1)*(r1_sq + self.r_soft_sq1)**(-5/2)
             
         elif (self.soft_method1 == "uniform_old"):
-            x = np.sqrt(r1_sq/self.r_soft_sq)
+            x = np.sqrt(r1_sq/self.r_soft_sq1)
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
             inds = x < 1
             if (np.sum(inds) > 1):
                 inds = inds.flatten()
-                acc_DM1[inds] = -u.G_N*M1_eff*dx1[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq)
+                acc_DM1[inds] = -u.G_N*M1_eff*dx1[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq1)
 
         elif (self.soft_method1 == "uniform"):
-            x = np.sqrt(r1_sq/self.r_soft_sq)
+            x = np.sqrt(r1_sq/self.r_soft_sq1)
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
             inds = x < 1
             if (np.sum(inds) > 1):
                 inds = inds.flatten()
-                acc_DM1[inds] = -u.G_N*M1_eff*dx1[inds,:]*x[inds]/(self.r_soft_sq)
+                acc_DM1[inds] = -u.G_N*M1_eff*dx1[inds,:]*x[inds]/(self.r_soft_sq1)
                 
         elif (self.soft_method1 == "truncate"):
-            r1_sq = np.clip(r1_sq, self.r_soft_sq, 1e50)
+            r1_sq = np.clip(r1_sq, self.r_soft_sq1, 1e50)
             acc_DM1 = -u.G_N*M1_eff*dx1/r1_sq
 
         elif (self.soft_method1 == "empty_shell"):
-            x = np.sqrt(r1_sq/self.r_soft_sq)
+            x = np.sqrt(r1_sq/self.r_soft_sq1)
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
             inds = x < 1
             if (np.sum(inds) >= 1):
@@ -212,7 +216,7 @@ class simulator():
 
 
             else:
-                raise ValueError("Invalid softening method: " + self.soft_method)
+                raise ValueError("Invalid softening method:" + self.soft_method)
 
             #Calculate forces between the 2 BHs  
             dx12    = (self.p.xBH1 - self.p.xBH2)
