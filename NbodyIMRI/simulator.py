@@ -52,6 +52,7 @@ class simulator():
         self.p = copy.deepcopy(particle_set)
         self.r_soft_sq = r_soft_sq
         self.soft_method = soft_method    
+        self.soft_method1 = "uniform"
         self.check_state = check_state
         self.background_field = None
         
@@ -130,13 +131,13 @@ class simulator():
             M2_eff  = (self.p.M_1*self.p.M_2)/(self.p.M_1 + self.p.M_2)
         
         #Calculate forces (including softening)
-        if (self.soft_method == "plummer"):
+        if (self.soft_method1 == "plummer"):
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq + self.r_soft_sq)**-1
             
-        elif (self.soft_method == "plummer2"):
+        elif (self.soft_method1 == "plummer2"):
             acc_DM1 = -u.G_N*M1_eff*r1*(dx1/2)*(2*r1_sq + 5*self.r_soft_sq)*(r1_sq + self.r_soft_sq)**(-5/2)
             
-        elif (self.soft_method == "uniform_old"):
+        elif (self.soft_method1 == "uniform_old"):
             x = np.sqrt(r1_sq/self.r_soft_sq)
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
             inds = x < 1
@@ -144,7 +145,7 @@ class simulator():
                 inds = inds.flatten()
                 acc_DM1[inds] = -u.G_N*M1_eff*dx1[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq)
 
-        elif (self.soft_method == "uniform"):
+        elif (self.soft_method1 == "uniform"):
             x = np.sqrt(r1_sq/self.r_soft_sq)
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
             inds = x < 1
@@ -152,11 +153,11 @@ class simulator():
                 inds = inds.flatten()
                 acc_DM1[inds] = -u.G_N*M1_eff*dx1[inds,:]*x[inds]/(self.r_soft_sq)
                 
-        elif (self.soft_method == "truncate"):
+        elif (self.soft_method1 == "truncate"):
             r1_sq = np.clip(r1_sq, self.r_soft_sq, 1e50)
             acc_DM1 = -u.G_N*M1_eff*dx1/r1_sq
 
-        elif (self.soft_method == "empty_shell"):
+        elif (self.soft_method1 == "empty_shell"):
             x = np.sqrt(r1_sq/self.r_soft_sq)
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq)**-1
             inds = x < 1
@@ -165,7 +166,7 @@ class simulator():
                 acc_DM1[inds] *= 0.0
 
         else:
-            raise ValueError("Invalid softening method:" + self.soft_method)
+            raise ValueError("Invalid softening method:" + self.soft_method1)
         
         #Calculate forces on second BH (if it exists)
         if (self.p.M_2 > 0):
@@ -211,7 +212,7 @@ class simulator():
 
 
             else:
-                raise ValueError("Invalid softening method:" + self.soft_method)
+                raise ValueError("Invalid softening method: " + self.soft_method)
 
             #Calculate forces between the 2 BHs  
             dx12    = (self.p.xBH1 - self.p.xBH2)

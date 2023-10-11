@@ -81,12 +81,14 @@ class particles():
         self.r_t      = r_t
         self.alpha    = alpha
         
+        if (self.dynamic_DM):
+            M1_eff = self.M_1 +	self.M_2
         
         if (self.N_DM > 2):
             if (r_t < 0):
-                SpikeDF = DF.PowerLawSpike(self.M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp)
+                SpikeDF = DF.PowerLawSpike(M1_eff/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp)
             else:
-                SpikeDF = DF.GeneralizedNFWSpike(self.M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp, r_t/u.pc, alpha)
+                SpikeDF = DF.GeneralizedNFWSpike(M1_eff/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp, r_t/u.pc, alpha)
             r, v = SpikeDF.draw_particle(r_max/u.pc, N = self.N_DM)
 
             for i in range(self.N_DM):
@@ -223,10 +225,9 @@ def load_particles_from_file(fileID, which="initial"):
         p (particles): a `particles` object containing the state of the system from file
     
     """
-    fname = join(NbodyIMRI.snapshot_dir, fileID)
-    if not fname.endswith(".hdf5"):
-        fname += ".hdf5"
-    f = h5py.File(fname, 'r')
+    
+    f = tools.open_file_for_read(fileID)
+    
     M_1 = f['data'].attrs["M_1"]*u.Msun
     M_2 = f['data'].attrs["M_2"]*u.Msun
     N_DM = f['data'].attrs["N_DM"]
