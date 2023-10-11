@@ -81,12 +81,16 @@ class particles():
         self.r_t      = r_t
         self.alpha    = alpha
         
+        if (self.dynamic_BH):
+            M1_eff = self.M_1 +self.M_2
+        else:
+            M1_eff = self.M_1
         
         if (self.N_DM > 2):
             if (r_t < 0):
-                SpikeDF = DF.PowerLawSpike(self.M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp)
+                SpikeDF = DF.PowerLawSpike(M1_eff/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp)
             else:
-                SpikeDF = DF.GeneralizedNFWSpike(self.M_1/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp, r_t/u.pc, alpha)
+                SpikeDF = DF.GeneralizedNFWSpike(M1_eff/u.Msun, rho_6/(u.Msun/u.pc**3), gamma_sp, r_t/u.pc, alpha)
             r, v = SpikeDF.draw_particle(r_max/u.pc, N = self.N_DM)
 
             for i in range(self.N_DM):
@@ -232,6 +236,14 @@ def load_particles_from_file(fileID, which="initial"):
     N_DM = f['data'].attrs["N_DM"]
     M_DM_i = f['data'].attrs["M_DM"]*u.Msun
     dynamic = f['data'].attrs["dynamic"]
+
+    try:
+        M1_list  = np.array(f['data']['M_1'])
+        M2_list  = np.array(f['data']['M_2'])
+    except:
+        M1_list = M_1*np.ones_like(ts)
+        M2_list = M_2*np.ones_like(ts)
+
     if (dynamic == 1):
         dynamic_BH = True
     else:
@@ -244,11 +256,13 @@ def load_particles_from_file(fileID, which="initial"):
     p = particles(M_1, M_2, N_DM=N_DM, M_DM=M_DM_i, dynamic_BH=dynamic_BH)
     
     if (which == "initial"):
-        p.xBH1 = np.array(f['data']['xBH1'])[1,:]
-        p.vBH1 = np.array(f['data']['vBH1'])[1,:]
+        p.M_1 = M1_list[0]
+        p.M_2 = M2_list[0]
+        p.xBH1 = np.array(f['data']['xBH1'])[0,:]
+        p.vBH1 = np.array(f['data']['vBH1'])[0,:]
     
-        p.xBH2 = np.array(f['data']['xBH2'])[1,:]
-        p.vBH2 = np.array(f['data']['vBH2'])[1,:]
+        p.xBH2 = np.array(f['data']['xBH2'])[0,:]
+        p.vBH2 = np.array(f['data']['vBH2'])[0,:]
     
         try:
             p.xDM  = np.array(f['data']['xDM_i'])
@@ -260,6 +274,8 @@ def load_particles_from_file(fileID, which="initial"):
         
         
     elif (which == "final"):
+        p.M_1 = M1_list[-1]
+        p.M_2 = M2_list[-1]
         p.xBH1 = np.array(f['data']['xBH1'])[-1,:]
         p.vBH1 = np.array(f['data']['vBH1'])[-1,:]
     
