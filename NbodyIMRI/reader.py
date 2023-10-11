@@ -8,25 +8,15 @@ import numpy as np
 from tqdm import tqdm
 from scipy import signal
 
-from NbodyIMRI import distributionfunctions as DF
 from NbodyIMRI import tools, particles
 from NbodyIMRI import units as u
 import NbodyIMRI
 
+from NbodyIMRI.tools import open_file_for_read
+
 import h5py
 import copy
-
-def open_file_for_read(fileID):
-    """
-    Open an output file in order to be read (taking care of the correct directory structure and file endings)
-    
-    Parameters:
-        fileID (string):    fileID of the file you'd like to load.
-    """
-    fname = join(NbodyIMRI.snapshot_dir, fileID)
-    if not fname.endswith(".hdf5"):
-        fname += ".hdf5"
-    return h5py.File(fname, 'r')
+import glob
 
 
 def load_trajectory(fileID):
@@ -216,7 +206,7 @@ def plot_trajectory(fileID):
     
     axes[0].set_xlabel(r"$t$ [s]")
     axes[0].set_ylabel(r"$\Delta a/a_i$")
-    axes[0].set_title(fileID)
+    axes[0].set_title(fileID.replace("_", "\_"))
     
     axes[1].plot(t, e - e[0])
     axes[1].axhline(e[0], linestyle='--', color='grey')

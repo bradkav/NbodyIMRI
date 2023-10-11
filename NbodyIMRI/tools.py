@@ -4,7 +4,30 @@ from scipy.integrate import cumtrapz
 import string
 import random
 
+import NbodyIMRI
 from NbodyIMRI import units as u
+from os.path import join
+
+import h5py
+import glob
+
+
+def open_file_for_read(fileID):
+    """
+    Open an output file in order to be read (taking care of the correct directory structure and file endings)
+    
+    Parameters:
+        fileID (string):    fileID of the file you'd like to load.
+    """
+    filestr = join(NbodyIMRI.snapshot_dir, fileID)
+    flist = glob.glob(filestr + "*")
+    if (len(flist) != 1):
+         raise ValueError(f"File <{filestr}*> cannot be found or is not unique.")
+    else:
+        fname = flist[0]
+    #if not fname.endswith(".hdf5"):
+    #    fname += ".hdf5"
+    return h5py.File(fname, 'r')
 
 def inverse_transform_sample(integrand, x_min, x_max, N_samps=1, N_grid=1000, log=True):
     if (log == True):
@@ -18,7 +41,6 @@ def inverse_transform_sample(integrand, x_min, x_max, N_samps=1, N_grid=1000, lo
     u = np.random.rand(N_samps)
     x_samps = np.interp(u, P_grid, x_grid)
     return x_samps
-    
     
 def get_random_direction():
     costheta = 2*np.random.rand() - 1
