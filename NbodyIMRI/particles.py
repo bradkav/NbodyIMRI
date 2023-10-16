@@ -82,11 +82,11 @@ class particles():
         self.alpha    = alpha
         
         if (self.dynamic_BH):
-            M1_eff = self.M_1 +self.M_2
+            M1_eff = self.M_1 
         else:
-            M1_eff = self.M_1
+            M1_eff = self.M_1 + self.M_2
         
-        if (self.N_DM > 2):
+        if (self.N_DM > 0):
             if (r_t < 0):
                 SpikeDF = DF.PowerLawSpike(M1_eff, rho_6, gamma_sp)
             else:

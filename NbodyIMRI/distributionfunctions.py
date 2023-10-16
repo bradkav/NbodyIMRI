@@ -79,18 +79,15 @@ class SpikeDistribution(ABC):
         """
         
         """
-    
-        if (N > 1):
-            r = self.draw_radius(r_max, r_min, N)
+        r = self.draw_radius(r_max, r_min, N)
+        if (N >= 1):
             v = 0.0*r
             for i, ri in enumerate(r):
                 v[i] = self.draw_velocity(ri, N=1)
-        elif (N == 1):
-            r = self.draw_radius(r_max, r_min, 1)
-            v = self.draw_velocity(r, 1)
+        #elif (N == 1):
+        #    v = self.draw_velocity(r, N=1)
         else:
             sys.exit("Error: N must be positive!")
-            
             
         return r, v
         

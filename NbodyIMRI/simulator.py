@@ -133,7 +133,7 @@ class simulator():
             #M2_eff  = self.p.M_2
             M1_eff  = self.p.M_1 + self.p.M_2
             M2_eff  = (self.p.M_1*self.p.M_2)/(self.p.M_1 + self.p.M_2)
-        
+
         #Calculate forces (including softening)
         if (self.soft_method1 == "plummer"):
             acc_DM1 = -u.G_N*M1_eff*dx1*(r1_sq + self.r_soft_sq1)**-1
@@ -214,7 +214,6 @@ class simulator():
                     inds = inds.flatten()      
                     acc_DM2[inds] *= 0.0
 
-
             else:
                 raise ValueError("Invalid softening method:" + self.soft_method)
 
@@ -228,7 +227,7 @@ class simulator():
         
         #Save the values of the acceleration
         if (self.p.dynamic_BH):
-            self.p.dvdtBH1 = acc_BH
+            self.p.dvdtBH1 = acc_BH - (1/M1_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM1, axis=0)
         else:
             self.p.dvdtBH1 = 0.0
         
@@ -236,7 +235,12 @@ class simulator():
             self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - (1/M2_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM2, axis=0)
         else:
             self.p.dvdtBH2 = 0.0
+        
         self.p.dvdtDM  = acc_DM1 + acc_DM2
+        #if (not self.p.dynamic_BH):
+        #    self.p.dvdtDM += -acc_BH
+        #else:
+            
         
         #Now, if a background force field has been set, calculate the acceleration
         if self.background_field is not None:
