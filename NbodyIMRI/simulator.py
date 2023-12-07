@@ -227,12 +227,12 @@ class simulator():
         
         #Save the values of the acceleration
         if (self.p.dynamic_BH):
-            self.p.dvdtBH1 = acc_BH - (1/M1_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM1, axis=0)
+            self.p.dvdtBH1 = acc_BH - 0.0*(1/M1_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM1, axis=0)
         else:
             self.p.dvdtBH1 = 0.0
         
         if (self.p.M_2 > 0):
-            self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - (1/M2_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM2, axis=0)
+            self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - 0.0*(1/M2_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM2, axis=0)
         else:
             self.p.dvdtBH2 = 0.0
         
@@ -287,9 +287,23 @@ class simulator():
             self.fileID = f"{self.runID}_{self.IDhash}"
             
         N_step = int(np.ceil(t_end/dt)) 
+        
+        #Initialise lists to save the BH positions
+        self.ts        = np.linspace(0, t_end, N_step)
+        self.xBH1_list = np.zeros((N_step, 3))
+        self.vBH1_list = np.zeros((N_step, 3))
+    
+        self.xBH2_list = np.zeros((N_step, 3))
+        self.vBH2_list = np.zeros((N_step, 3))
+        
+        self.M1_list   = np.zeros(N_step)
+        self.M2_list   = np.zeros(N_step)
+        
+        
         #N_save = 100 #Save only every 100 timesteps
         #N_save = 1
-        N_out = int(N_step/N_save)
+        #N_out = int(N_step/N_save)
+        N_out = len(self.ts[::N_save])
         N_update = 100_000 #Update the output file only every 100_000 steps
         #N_update = 1
 
@@ -319,20 +333,12 @@ class simulator():
             except: 
                 print("No old snapshot file found...")
             f = self.open_outputfile(fname, N_out, save_DM_states)
-            
-        #Initialise lists to save the BH positions
-        self.xBH1_list = np.zeros((N_step, 3))
-        self.vBH1_list = np.zeros((N_step, 3))
-    
-        self.xBH2_list = np.zeros((N_step, 3))
-        self.vBH2_list = np.zeros((N_step, 3))
-        self.ts        = np.linspace(0, t_end, N_step)
-        self.M1_list   = np.zeros(N_step)
-        self.M2_list   = np.zeros(N_step)
+
         
         
         #Save the time steps and the initial DM configuration
         if (save_to_file):
+            print(N_step, len(self.t_data[:]), len(1.0*self.ts[::N_save]))
             self.t_data[:] = 1.0*self.ts[::N_save]
             self.M1_list[0] = self.p.M_1
             self.M2_list[0] = self.p.M_2
@@ -350,6 +356,10 @@ class simulator():
         #print("N_steps:", N_step)
         #Simulate for N_step time-steps
         for it in stepper(range(N_step)):
+            
+            #Do any checks of the state of the system in between timesteps
+            if (self.check_state is not None):
+                self.check_state(self)
               
             #Save current binary configuration to array
             self.M1_list[it]     = self.p.M_1
@@ -379,10 +389,6 @@ class simulator():
             #Increment the current step number (this is primarily so that the 
             #check_state function has some idea about how far in the simulation we are...)
             self.current_step += 1
-            
-            #Do any checks of the state of the system in between timesteps
-            if (self.check_state is not None):
-                self.check_state(self)
         
 
         #One final update of the output data   
