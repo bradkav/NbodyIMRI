@@ -37,8 +37,9 @@ class simulator():
     
     Attributes:
         p (particles)       : A particles object, which specifies the initial conditions of the objects to simulate (a deep copy is made and used internally by the simulator)
-        r_soft_sq (float)   : The square of the softening length to be used for the DM particles (the BH-BH forces are not softened)
-        soft_method (string): Softening method to be used. Options are: "plummer", "plummer2", "uniform", "truncate". 
+        r_soft_sq2 (float)   : The square of the softening length to be used for the DM particle interactions with the secondary, m2
+        r_soft_sq1 (float)   : The square of the softening length to be used for the DM particle interactions with the primary, m1. Default is set to r_soft_sq2.
+        soft_method (string): Softening method to be used. Options are: "plummer", "plummer2", "uniform", "truncate", "empty_shell". 
                             Default is "uniform" which computes the softening assuming that each DM particle is a finite sphere of uniform density.
         IDhash (string)     : A hash made up of 5 hexadecimal digits which identifies the simulation (and the output files). This is generated and saved when he simulation is run.
         check_state (function): A function which will be called in between each timestep to check the state of the simulation and perform any required operations. 
@@ -46,15 +47,17 @@ class simulator():
     
     """
     
-    def __init__(self, particle_set, r_soft_sq = 0.0, r_soft_sq1 = -1, soft_method="uniform", check_state = None):
+    def __init__(self, particle_set, r_soft_sq2 = 0.0, r_soft_sq1 = -1, soft_method="empty_shell", check_state = None):
             
         self.p = copy.deepcopy(particle_set)
-        self.r_soft_sq = r_soft_sq
+        self.r_soft_sq2 = r_soft_sq2
         self.r_soft_sq1 = r_soft_sq1
         if (self.r_soft_sq1 < 0):
-            self.r_soft_sq1 = 1.0*r_soft_sq
-        self.soft_method = soft_method    
-        self.soft_method1 = "uniform"
+            self.r_soft_sq1 = 1.0*r_soft_sq2
+        self.soft_method = soft_method
+        
+        #Softening with the primary is always set to "uniform"    
+        self.soft_method1 = "uniform" 
         self.check_state = check_state
         self.background_field = None
         
@@ -181,33 +184,33 @@ class simulator():
 
 
             if (self.soft_method == "plummer"):
-                acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq + self.r_soft_sq)**-1
+                acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq + self.r_soft_sq2)**-1
 
             elif (self.soft_method == "plummer2"):
-                acc_DM2 = -u.G_N*M2_eff*r2*(dx2/2)*(2*r2_sq + 5*self.r_soft_sq)*(r2_sq + self.r_soft_sq)**(-5/2)
+                acc_DM2 = -u.G_N*M2_eff*r2*(dx2/2)*(2*r2_sq + 5*self.r_soft_sq2)*(r2_sq + self.r_soft_sq2)**(-5/2)
 
             elif (self.soft_method == "uniform_old"):
-                x = np.sqrt(r2_sq/self.r_soft_sq)
+                x = np.sqrt(r2_sq/self.r_soft_sq2)
                 acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq)**-1
                 inds = x < 1
                 if (np.sum(inds) > 1):
                     inds = inds.flatten()
-                    acc_DM2[inds] = -u.G_N*M2_eff*dx2[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq)
+                    acc_DM2[inds] = -u.G_N*M2_eff*dx2[inds,:]*x[inds]*(8 - 9*x[inds] + 2*(x[inds])**3)/(self.r_soft_sq2)
 
             elif (self.soft_method == "uniform"):
-                x = np.sqrt(r2_sq/self.r_soft_sq)
+                x = np.sqrt(r2_sq/self.r_soft_sq2)
                 acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq)**-1
                 inds = x < 1
                 if (np.sum(inds) > 1):
                     inds = inds.flatten()
-                    acc_DM2[inds] = -u.G_N*M2_eff*dx2[inds,:]*x[inds]/(self.r_soft_sq)
+                    acc_DM2[inds] = -u.G_N*M2_eff*dx2[inds,:]*x[inds]/(self.r_soft_sq2)
 
             elif (self.soft_method == "truncate"):
-                r2_sq = np.clip(r2_sq, self.r_soft_sq, 1e50)
+                r2_sq = np.clip(r2_sq, self.r_soft_sq2, 1e50)
                 acc_DM2 = -u.G_N*M2_eff*dx2/r2_sq
 
             elif (self.soft_method == "empty_shell"):
-                x = np.sqrt(r2_sq/self.r_soft_sq)
+                x = np.sqrt(r2_sq/self.r_soft_sq2)
                 acc_DM2 = -u.G_N*M2_eff*dx2*(r2_sq)**-1
                 inds = x < 1
                 if (np.sum(inds) >= 1):
@@ -227,20 +230,17 @@ class simulator():
         
         #Save the values of the acceleration
         if (self.p.dynamic_BH):
-            self.p.dvdtBH1 = acc_BH - 0.0*(1/M1_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM1, axis=0)
+            #Acceleration of central BH due only to m2
+            self.p.dvdtBH1 = acc_BH #- (1/M1_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM1, axis=0)
         else:
             self.p.dvdtBH1 = 0.0
         
         if (self.p.M_2 > 0):
-            self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - 0.0*(1/M2_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM2, axis=0)
+            self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - (1/M2_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM2, axis=0)
         else:
             self.p.dvdtBH2 = 0.0
         
-        self.p.dvdtDM  = acc_DM1 + acc_DM2
-        #if (not self.p.dynamic_BH):
-        #    self.p.dvdtDM += -acc_BH
-        #else:
-            
+        self.p.dvdtDM  = acc_DM1 + acc_DM2            
         
         #Now, if a background force field has been set, calculate the acceleration
         if self.background_field is not None:
@@ -439,7 +439,7 @@ class simulator():
         grp.attrs['e_i'] = e_i
         grp.attrs['N_DM'] = self.p.N_DM
         grp.attrs['M_DM'] = self.p.M_DM[0]/u.Msun
-        grp.attrs['r_soft'] = np.sqrt(self.r_soft_sq)/u.pc
+        grp.attrs['r_soft'] = np.sqrt(self.r_soft_sq2)/u.pc
         if (self.p.dynamic_BH):
             grp.attrs['dynamic'] = 1
         else:
@@ -482,7 +482,7 @@ class simulator():
     
         meta_data = np.array([self.fileID, self.p.M_1/u.Msun, self.M_2_ini/u.Msun, 
                             self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM[0]/u.Msun, 
-                            int(np.round(T_orb/self.dt)), int(np.round(self.t_end/T_orb)), np.sqrt(self.r_soft_sq)/u.pc, self.method,
+                            int(np.round(T_orb/self.dt)), int(np.round(self.t_end/T_orb)), np.sqrt(self.r_soft_sq2)/u.pc, self.method,
                             self.p.rho_6/(u.Msun/u.pc**3), self.p.gamma_sp, self.p.alpha, self.p.r_t/u.pc])
                             
         meta_data = np.reshape(meta_data, (1,  len(meta_data)))

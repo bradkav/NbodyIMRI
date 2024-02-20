@@ -135,7 +135,7 @@ class particles():
                     self.vDM[i,:] = sgn*(SpikeDF.v_max(r[i])/np.sqrt(2))*vhat
                     
             self.xDM += self.xBH1
-            self.vDM += self.vBH1
+            #self.vDM += self.vBH1
     
     def summary(self):
         print("> Particle set:")

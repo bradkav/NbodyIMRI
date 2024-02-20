@@ -212,7 +212,7 @@ class GeneralizedNFWSpike(SpikeDistribution):
         d2rho_of_psi = rho_of_psi.derivative(n=2)        
         
         f_vals = 0.0*E_vals
-        for i, E in enumerate(tqdm(E_vals, desc="Initialising distribution function")):
+        for i, E in enumerate(E_vals):
             _Q = np.sqrt(np.geomspace(psi_min, E, 1000))
             _psi = E - _Q**2
             integrand = d2rho_of_psi(_psi)
