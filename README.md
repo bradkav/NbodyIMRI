@@ -1,5 +1,7 @@
 # NbodyIMRI
 
+[![arXiv1](https://img.shields.io/badge/arXiv-2402.13053-B31B1B)](http://arxiv.org/abs/2402.13053) [![arXiv2](https://img.shields.io/badge/arXiv-2402.13762-B31B1B)](http://arxiv.org/abs/2402.13762) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 `NbodyIMRI` is a code for studying DM-dressed IMRI and EMRI systems using N-body simulations. The code calculates all BH-BH forces and BH-DM forces directly, while neglecting DM-DM pairwise interactions. This allows the code to scale up to very large numbers of DM particles, in order to study stochastic processes like dynamical friction.
 
 
@@ -33,6 +35,32 @@ Alternatively, if you'd like to install the editable version, do:
 
 ```
 pip install -e .
+```
+
+### Citation
+
+If you make use of the code, please refer to this github page, as well as citing the two companion papers,
+[arXiv:2402.13053](https://arxiv.org/abs/2402.13053) and [arXiv:2402.13762](https://arxiv.org/abs/2402.13762):
+```
+@article{Karydas:2024fcn,
+    author = "Karydas, Theophanes K. and Kavanagh, Bradley J. and Bertone, Gianfranco",
+    title = "{Sharpening the dark matter signature in gravitational waveforms I: Accretion and eccentricity evolution}",
+    eprint = "2402.13053",
+    archivePrefix = "arXiv",
+    primaryClass = "gr-qc",
+    month = "2",
+    year = "2024"
+}
+
+@article{Kavanagh:2024lgq,
+    author = "Kavanagh, Bradley J. and Karydas, Theophanes K. and Bertone, Gianfranco and Di Cintio, Pierfrancesco and Pasquato, Mario",
+    title = "{Sharpening the dark matter signature in gravitational waveforms II: Numerical simulations with the NbodyIMRI code}",
+    eprint = "2402.13762",
+    archivePrefix = "arXiv",
+    primaryClass = "gr-qc",
+    month = "2",
+    year = "2024"
+}
 ```
 
 ### Version History
