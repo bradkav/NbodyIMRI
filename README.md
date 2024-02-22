@@ -1,6 +1,6 @@
 # NbodyIMRI
 
-[![arXiv1](https://img.shields.io/badge/arXiv-2402.13053-B31B1B)](http://arxiv.org/abs/2402.13053) [![arXiv2](https://img.shields.io/badge/arXiv-2402.13762-B31B1B)](http://arxiv.org/abs/2402.13762) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![arXiv1](https://img.shields.io/badge/arXiv-2402.13053-B31B1B)](http://arxiv.org/abs/2402.13053) [![arXiv2](https://img.shields.io/badge/arXiv-2402.13762-B31B1B)](http://arxiv.org/abs/2402.13762) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10641173.svg)](https://doi.org/10.5281/zenodo.10641173) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 `NbodyIMRI` is a code for studying DM-dressed IMRI and EMRI systems using N-body simulations. The code calculates all BH-BH forces and BH-DM forces directly, while neglecting DM-DM pairwise interactions. This allows the code to scale up to very large numbers of DM particles, in order to study stochastic processes like dynamical friction.
 
