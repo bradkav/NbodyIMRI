@@ -47,7 +47,7 @@ class simulator():
 
     """
 
-    def __init__(self, particle_set, r_soft_sq2 = 0.0, r_soft_sq1 = -1, soft_method="empty_shell", check_state = None):
+    def __init__(self, particle_set, r_soft_sq2 = 0.0, r_soft_sq1 = -1, soft_method="uniform", check_state = None):
 
         self.p = copy.deepcopy(particle_set)
         self.r_soft_sq2 = r_soft_sq2
@@ -55,6 +55,7 @@ class simulator():
         if (self.r_soft_sq1 < 0):
             self.r_soft_sq1 = 1.0*r_soft_sq2
         self.soft_method = soft_method
+
 
         self.r_soft= r_soft_sq1**0.5
 
@@ -537,6 +538,8 @@ class simulator():
 
         print("> Simulating...")
 
+        print("soft method 2 =", self.soft_method)
+
         #Determine total number of steps
         self.t_end   = t_end
         self.dt      = dt
@@ -568,9 +571,20 @@ class simulator():
         #N_save = 100 #Save only every 100 timesteps
         #N_save = 1
         #N_out = int(N_step/N_save)
+        print("N_save is", N_save)
+
+
         N_out = len(self.ts[::N_save])
-        N_update = 100_000 #Update the output file only every 100_000 steps
+
+        print("N_out is", N_out)
+
+        #N_update = 100_000 #Update the output file only every 100_000 steps
         #N_update = 1
+        N_update = N_save
+
+        print("N update= ", N_update)
+
+
         N_update_mask=1
         print("N update mask= ", N_update_mask)
         #Determine initial orbital parameters of the system
@@ -584,10 +598,16 @@ class simulator():
             self.a_i = 0
             self.e_i = 0
 
+
         self.M_2_ini = self.p.M_2
 
         self.method = method
         self.finished = False
+
+
+        #Add information to SimulationList.txt if required
+        if (add_to_list):
+            self.output_metadata_initial()
 
         #Open output file
         if (save_to_file):
@@ -606,6 +626,7 @@ class simulator():
         if (save_to_file):
             print(N_step, len(self.t_data[:]), len(1.0*self.ts[::N_save]))
             self.t_data[:] = 1.0*self.ts[::N_save]
+            self.t_data.flush() #force write to file
             self.M1_list[0] = self.p.M_1
             self.M2_list[0] = self.p.M_2
 
@@ -648,6 +669,15 @@ class simulator():
 
                 self.xBH2_data[:,:] = 1.0*self.xBH2_list[::N_save,:]
                 self.vBH2_data[:,:] = 1.0*self.vBH2_list[::N_save,:]
+
+                self.M_1_data.flush()
+                self.M_2_data.flush()
+
+                self.xBH1_data.flush()
+                self.vBH1_data.flush()
+
+                self.xBH2_data.flush()
+                self.vBH2_data.flush()
 
             #Step forward by dt
             if self.N_partition>1:
@@ -724,6 +754,7 @@ class simulator():
 
         print("> Simulation completed.")
 
+
         #Add information to SimulationList.txt if required
         if (add_to_list):
             self.output_metadata()
@@ -740,7 +771,8 @@ class simulator():
         ...
 
         """
-        f = h5py.File(fname, "w")
+        f = h5py.File(fname, "w", libver="latest")
+
         grp = f.create_group("data")
         grp.attrs['M_1'] = self.p.M_1/u.Msun
         grp.attrs['M_2'] = self.M_2_ini/u.Msun
@@ -782,14 +814,45 @@ class simulator():
 
             self.M_DM_data = grp.create_dataset("M_DM", (self.p.N_DM,), dtype=datatype, compression="gzip")
 
+        f.swmr_mode = True  # Activate SWMR mode
+        f.flush()
+
+
         return f
+
+    def output_metadata_initial(self):
+        """
+        ...
+        """
+
+        listfile = f'{NbodyIMRI.snapshot_dir}/SimulationListAll.txt'
+        hdrtxt = "Columns: FileID, M_1/MSUN, M_2/MSUN, a_i/r_isco(M1), e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
+
+        T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot()))
+
+        meta_data = np.array([self.fileID, self.p.M_1/u.Msun, self.M_2_ini/u.Msun,
+                            self.a_i/tools.calc_risco(self.p.M_1), self.e_i, self.p.N_DM, self.p.M_DM[0]/u.Msun,
+                            int(np.round(T_orb/self.dt)), int(np.round(self.t_end/T_orb)), np.sqrt(self.r_soft_sq2)/u.pc, self.method,
+                            self.p.rho_6/(u.Msun/u.pc**3), self.p.gamma_sp, self.p.alpha, self.p.r_t/u.pc])
+
+        meta_data = np.reshape(meta_data, (1,  len(meta_data)))
+
+
+        if (os.path.isfile(listfile)):
+            with open(listfile,'a') as g:
+                np.savetxt(g, meta_data, fmt='%s')
+            g.close()
+        else:
+            np.savetxt(listfile, meta_data, header=hdrtxt, fmt='%s')
+
+
 
     def output_metadata(self):
         """
         ...
         """
 
-        listfile = f'{NbodyIMRI.snapshot_dir}/SimulationList.txt'
+        listfile = f'{NbodyIMRI.snapshot_dir}/SimulationListCompleted.txt'
         hdrtxt = "Columns: FileID, M_1/MSUN, M_2/MSUN, a_i/r_isco(M1), e_i, N_DM, M_DM/MSUN, Nstep_per_orb, N_orb, r_soft/PC, method, rho_6/(MSUN/PC**3), gamma, alpha, r_t/PC"
 
         T_orb = 2*np.pi*np.sqrt(self.a_i**3/(u.G_N*self.p.M_tot()))

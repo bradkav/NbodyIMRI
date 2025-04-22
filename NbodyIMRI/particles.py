@@ -25,7 +25,7 @@ class particles():
         self.M_1 = M_1
         self.M_2 = M_2
 
-        print("4:30pm version")
+        print("22 Apr version")
 
 
         #self.M_tot = M_1 + M_2
