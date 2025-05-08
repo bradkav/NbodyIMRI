@@ -282,7 +282,8 @@ def load_particles_from_file(fileID, which="initial"):
 
     """
 
-    f = tools.open_file_for_read(fileID)
+    #f = tools.open_file_for_read(fileID)
+    f = tools.open_file_for_read_main(fileID)
 
     M_1 = f['data'].attrs["M_1"]*u.Msun
     M_2 = f['data'].attrs["M_2"]*u.Msun
