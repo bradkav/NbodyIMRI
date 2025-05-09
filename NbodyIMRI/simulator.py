@@ -549,7 +549,7 @@ class simulator():
 
         self.IDhash=IDhash
 
-        if self.IDhash=None:
+        if (self.IDhash is None):
             self.IDhash = tools.generate_hash()
 
         self.N_partition=N_step_partition
