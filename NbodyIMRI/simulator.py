@@ -514,7 +514,7 @@ class simulator():
 
 
 
-    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=1, label=None, N_step_partition=1):
+    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=1, label=None, N_step_partition=1, IDhash=None):
         """
         Run the simulator, starting from the current state of particles in p, running for a time t_end.
         Times and timesteps are in physical times (as opposed to being in terms of number of orbits etc.)
@@ -531,6 +531,7 @@ class simulator():
             N_save (int):    Number of time steps in between saving the data to file. Default = 1
             label (str):    String to be used in the name of the output file (along with the IDhash).
             N_step_partition (int): Number of timesteps to be performed on the inner set of particles for each main step. Default = 1.
+            IDhash (str): passing a IDhash can be useful when restarting a simulation. Remember to also pass "reload" as label
         Returns:
             None
 
@@ -545,7 +546,11 @@ class simulator():
         self.dt      = dt
         self.current_step = 0
         self.runID   = label
-        self.IDhash = tools.generate_hash()
+
+        self.IDhash=IDhash
+
+        if self.IDhash=None:
+            self.IDhash = tools.generate_hash()
 
         self.N_partition=N_step_partition
 
