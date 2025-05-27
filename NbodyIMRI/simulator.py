@@ -552,7 +552,11 @@ class simulator():
         if (self.IDhash is None):
             self.IDhash = tools.generate_hash()
 
+
         self.N_partition=N_step_partition
+
+
+        print("simulationg with r partition", self.p.r_partition/tools.calc_risco(self.p.M_1), "r isco")
 
         if (self.runID is None):
             self.fileID = self.IDhash
@@ -691,7 +695,7 @@ class simulator():
                 if (it%N_update_mask == 0):
 
                     #select the particles to be followed in HR
-                    self.p.mask=tools.norm(self.p.xDM - self.p.xBH1)<5*self.r_soft
+                    self.p.mask=tools.norm(self.p.xDM - self.p.xBH1)<self.p.r_partition
                     #print("updated the mask")
 
                     self.p.xDM_in=self.p.xDM[self.p.mask]
