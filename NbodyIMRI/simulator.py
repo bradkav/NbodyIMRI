@@ -795,6 +795,7 @@ class simulator():
         grp.attrs['N_DM'] = self.p.N_DM
         grp.attrs['M_DM'] = self.p.M_DM[0]/u.Msun
         grp.attrs['r_soft'] = np.sqrt(self.r_soft_sq2)/u.pc
+        grp.attrs['r_partition'] = self.p.r_partition/u.pc
         if (self.p.dynamic_BH):
             grp.attrs['dynamic'] = 1
         else:

@@ -299,6 +299,8 @@ def load_particles_from_file(fileID, which="initial"):
     M_DM_i = f['data'].attrs["M_DM"]*u.Msun
     dynamic = f['data'].attrs["dynamic"]
 
+    rpartition= f['data'].attrs['r_partition']*u.pc
+
     try:
         M1_list  = np.array(f['data']['M_1'])
         M2_list  = np.array(f['data']['M_2'])
@@ -353,8 +355,9 @@ def load_particles_from_file(fileID, which="initial"):
             p.xDM = np.zeros((N_DM, 3))
             p.vDM = np.zeros((N_DM, 3))
 
+    p.r_partition=rpartition
 
-
+    
     return p
 
 
