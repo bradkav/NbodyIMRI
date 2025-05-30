@@ -555,7 +555,8 @@ class simulator():
 
         self.N_partition=N_step_partition
 
-
+        if self.p.r_partition==-1:
+            self.p.r_partition=9*self.r_soft
         print("simulationg with r partition", self.p.r_partition/tools.calc_risco(self.p.M_1), "r isco")
 
         if (self.runID is None):
