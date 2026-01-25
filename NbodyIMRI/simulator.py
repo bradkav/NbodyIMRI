@@ -121,8 +121,9 @@ class simulator():
 
     def full_step_in(self, dt, method="PEFRL"):
         """
-        Perform a full leapfrog step on the inner particels only.
-        See e.g. https://arxiv.org/abs/2007.05308, http://physics.ucsc.edu/~peter/242/leapfrog.pdf
+        Perform a full leapfrog step on the inner particles only.
+
+        For method see e.g. https://arxiv.org/abs/2007.05308, http://physics.ucsc.edu/~peter/242/leapfrog.pdf
 
         Parameters:
             dt (float)      : size of the timestep (the leapfrog is made up of many sub-steps, with dt being the size of one full leapfrog step)
@@ -175,9 +176,10 @@ class simulator():
 
     def full_step_out(self, dt, method="PEFRL"):
         """
-        Perform a full leapfrog step on the external particles and BHs. Forces on the BHs are obtained taking into account all DM particles (inner and outer regions)
+        Perform a full leapfrog step on the external particles and BHs .
+        Forces on the BHs are obtained taking into account all DM particles (inner and outer regions).
 
-        See e.g. https://arxiv.org/abs/2007.05308, http://physics.ucsc.edu/~peter/242/leapfrog.pdf
+        For method see e.g. https://arxiv.org/abs/2007.05308, http://physics.ucsc.edu/~peter/242/leapfrog.pdf
 
         Parameters:
             dt (float)      : size of the timestep (the leapfrog is made up of many sub-steps, with dt being the size of one full leapfrog step)
@@ -238,13 +240,12 @@ class simulator():
         Update the acceleration of all particles in p, based on current positions of the outer particles and BHs.
         The positions of the inner particles are not updated within the main step.
 
-
         Returns:
             None
         """
 
         #print("updating acceleration")
-        if self.N_partition>1:
+        if self.p.r_p>1:
             self.p.xDM[~self.p.mask]= self.p.xDM_out
 
         #Calculate separations between DM particles and central BH
@@ -373,7 +374,7 @@ class simulator():
             self.p.dvdtBH2 += self.background_field(self.p.xBH2)
             self.p.dvdtDM  += self.background_field(self.p.xDM)
 
-        if self.N_partition>1:
+        if self.p.r_p>1:
             self.p.dvdtDM_out=self.p.dvdtDM[~self.p.mask]
 
 
@@ -439,7 +440,7 @@ class simulator():
          else:
              raise ValueError("Invalid softening method:" + self.soft_method1)
 
-         #Calculate forces on second BH (if it exists)
+         #Calculate forces from second BH (if it exists)
          if (self.p.M_2 > 0):
              dx2     = (self.p.xDM_in - self.p.xBH2)
              r2      = np.linalg.norm(dx2, axis=-1, keepdims=True)
@@ -483,38 +484,19 @@ class simulator():
 
              else:
                  raise ValueError("Invalid softening method:" + self.soft_method)
-
-             #Calculate forces between the 2 BHs
-             #dx12    = (self.p.xBH1 - self.p.xBH2)
-             #r12_sq  = np.linalg.norm(dx12, axis=-1, keepdims=True)**2
-             #acc_BH = -u.G_N*M2_eff*dx12*(r12_sq)**-1.5
          else:
-             #acc_BH = 0.0
              acc_DM2 = 0.0
 
-         #Save the values of the acceleration
-         #if (self.p.dynamic_BH):
-             #Acceleration of central BH due only to m2
-             #self.p.dvdtBH1 = acc_BH #- (1/M1_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM1, axis=0)
-         #else:
-             #self.p.dvdtBH1 = 0.0
-
-         #if (self.p.M_2 > 0):
-            # self.p.dvdtBH2 = -(M1_eff/M2_eff)*acc_BH - (1/M2_eff)*np.sum(np.atleast_2d(self.p.M_DM).T*acc_DM2, axis=0)
-         #else:
-        #     self.p.dvdtBH2 = 0.0
-
+         #Save the values of the accelerations
          self.p.dvdtDM_in  = acc_DM1 + acc_DM2
 
          #Now, if a background force field has been set, calculate the acceleration
          if self.background_field is not None:
-             #self.p.dvdtBH1 += self.background_field(self.p.xBH1)
-             #self.p.dvdtBH2 += self.background_field(self.p.xBH2)
              self.p.dvdtDM_in  += self.background_field(self.p.xDM_in)
 
 
 
-    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=1, label=None, N_step_partition=1, IDhash=None):
+    def run_simulation(self, dt, t_end, method="PEFRL", save_to_file = False, add_to_list = False, show_progress=False, save_DM_states=False, N_save=1, label=None, N_step_partition=10, IDhash=None):
         """
         Run the simulator, starting from the current state of particles in p, running for a time t_end.
         Times and timesteps are in physical times (as opposed to being in terms of number of orbits etc.)
@@ -539,7 +521,7 @@ class simulator():
 
         print("> Simulating...")
 
-        print("soft method 2 =", self.soft_method)
+        #print("soft method 2 =", self.soft_method)
 
         #Determine total number of steps
         self.t_end   = t_end
@@ -553,10 +535,8 @@ class simulator():
             self.IDhash = tools.generate_hash()
 
 
-        self.N_partition=N_step_partition
-
-
-        print("simulationg with r partition", self.p.r_partition/tools.calc_risco(self.p.M_1), "r isco")
+        self.N_p=N_step_partition
+        #print("simulating with r partition", self.p.r_p/tools.calc_risco(self.p.M_1), "r isco")
 
         if (self.runID is None):
             self.fileID = self.IDhash
@@ -577,25 +557,16 @@ class simulator():
         self.M2_list   = np.zeros(N_step)
 
 
-        #N_save = 100 #Save only every 100 timesteps
-        #N_save = 1
-        #N_out = int(N_step/N_save)
-        print("N_save is", N_save)
-
-
         N_out = len(self.ts[::N_save])
 
-        print("N_out is", N_out)
 
-        #N_update = 100_000 #Update the output file only every 100_000 steps
-        #N_update = 1
-        N_update = N_save
-
-        print("N update= ", N_update)
+        N_update = 100_000 #Update the output file only every 100_000 steps
+        #N_update = N_save
 
 
-        N_update_mask=1
-        print("N update mask= ", N_update_mask)
+        N_update_mask=1 #update the arrays of inner/outer particles at each outer step
+        #print("N update mask= ", N_update_mask)
+
         #Determine initial orbital parameters of the system
         if (self.p.M_2 > 0):
 
@@ -649,7 +620,6 @@ class simulator():
         if (show_progress):
             stepper = tqdm
 
-        #print("N_steps:", N_step)
         #Simulate for N_step time-steps
         for it in stepper(range(N_step)):
 
@@ -689,13 +659,13 @@ class simulator():
                 self.vBH2_data.flush()
 
             #Step forward by dt
-            if self.N_partition>1:
+            if self.p.r_p>1:
                 #perform smaller time steps in the inner volume
 
                 if (it%N_update_mask == 0):
 
                     #select the particles to be followed in HR
-                    self.p.mask=tools.norm(self.p.xDM - self.p.xBH1)<self.p.r_partition
+                    self.p.mask=tools.norm(self.p.xDM - self.p.xBH1)<self.p.r_p
                     #print("updated the mask")
 
                     self.p.xDM_in=self.p.xDM[self.p.mask]
@@ -708,9 +678,9 @@ class simulator():
                 #normal time step for the external particles and the BHs
                 self.full_step_out(dt, method)
 
-                for it2 in range(self.N_partition):
+                for it2 in range(self.N_p):
                     #short time steps for the inner ones
-                    self.full_step_in(dt/self.N_partition, method)
+                    self.full_step_in(dt/self.N_p, method)
 
 
                 #copy the updated coordinates back into the main arrays
@@ -726,7 +696,6 @@ class simulator():
 
 
             else:
-
                 self.full_step(dt, method)
 
 
@@ -739,7 +708,7 @@ class simulator():
 
 
         #copy the DM coordinates into the main arrays
-        if self.N_partition>1:
+        if self.p.r_p>1:
 
             #self.p.xDM[self.p.mask]=self.p.xDM_in
             self.p.xDM[~self.p.mask]=self.p.xDM_out
@@ -795,7 +764,9 @@ class simulator():
         grp.attrs['N_DM'] = self.p.N_DM
         grp.attrs['M_DM'] = self.p.M_DM[0]/u.Msun
         grp.attrs['r_soft'] = np.sqrt(self.r_soft_sq2)/u.pc
-        grp.attrs['r_partition'] = self.p.r_partition/u.pc
+        if self.p.r_p>1:
+            grp.attrs['r_p'] = self.p.r_p/u.pc
+
         if (self.p.dynamic_BH):
             grp.attrs['dynamic'] = 1
         else:
@@ -888,7 +859,7 @@ class simulator():
         """
 
         if (self.finished == False):
-            print("Simulation has not been finished. Please run using `rum_simulation()`.")
+            print("Simulation has not been finished. Please run using `run_simulation()`.")
             return 0
 
         else:

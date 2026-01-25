@@ -25,8 +25,6 @@ class particles():
         self.M_1 = M_1
         self.M_2 = M_2
 
-        print("22 Apr version")
-
 
         #self.M_tot = M_1 + M_2
 
@@ -42,7 +40,7 @@ class particles():
         self.xDM = np.zeros((N_DM, 3))
         self.vDM = np.zeros((N_DM, 3))
 
-        # define the variables that will contain the DM particels in the inner and outer region
+        # define the variables that will contain the DM particles in the inner and outer region
         self.xDM_in = None
         self.vDM_in = None
 
@@ -54,10 +52,10 @@ class particles():
 
         self.mask = None
 
-        #these are not really used?
-        self.dxdtDM = None
-        self.dxdtDM_in = None
-        self.dxdtDM_out = None
+
+        #self.dxdtDM = None
+        #self.dxdtDM_in = None
+        #self.dxdtDM_out = None
 
         self.dynamic_BH = dynamic_BH
 
@@ -112,19 +110,19 @@ class particles():
         a_i, e_i = self.orbital_elements()
         return tools.calc_Torb(a_i, self.M_tot())
 
-    def initialize_spike(self, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc, r_t=-1, alpha  = 2, circular=0, r_soft=-1, r_partition= -1):
+    def initialize_spike(self, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=1e-6*u.pc, r_t=-1, alpha = 2, circular=0, r_soft=-1, r_p= -1):
 
         self.rho_6    = rho_6
         self.gamma_sp = gamma_sp
         self.r_t      = r_t
         self.alpha    = alpha
-        self.r_partition=r_partition
+        self.r_p=r_p
 
-        if (self.r_partition<0):  #radius defining the inner set of particles to be placed on short step.  Default = -1.
-            self.r_partition= 5*r_soft
+        #if (self.r_p<0):  #radius defining the inner set of particles to be placed on short step.  Default = -1.
+            #self.r_p= 5*r_soft
 
 
-        print("initializing spike with r partition ", self.r_partition/tools.calc_risco(self.M_1), "r isco")
+        #print("initializing spike with r partition ", self.r_p/tools.calc_risco(self.M_1), "r isco")
 
 
 
@@ -185,14 +183,14 @@ class particles():
             #self.vDM += self.vBH1
 
             #assign paricles to inner and outer arrays
-            if self.r_partition > 0:
-                self.mask=tools.norm(self.xDM - self.xBH1)<self.r_partition
+            if self.r_p > 0:
+                self.mask=tools.norm(self.xDM - self.xBH1)<self.r_p
 
-            self.xDM_in=self.xDM[self.mask]
-            self.xDM_out=self.xDM[~self.mask]
+                self.xDM_in=self.xDM[self.mask]
+                self.xDM_out=self.xDM[~self.mask]
 
-            self.vDM_in=self.vDM[self.mask]
-            self.vDM_out=self.vDM[~self.mask]
+                self.vDM_in=self.vDM[self.mask]
+                self.vDM_out=self.vDM[~self.mask]
 
 
 
@@ -299,7 +297,11 @@ def load_particles_from_file(fileID, which="initial"):
     M_DM_i = f['data'].attrs["M_DM"]*u.Msun
     dynamic = f['data'].attrs["dynamic"]
 
-    rpartition= f['data'].attrs['r_partition']*u.pc
+    try:
+        rpartition= f['data'].attrs['r_p']*u.pc
+    except:
+        print("Partition radius not found in output file... (setting to -1)")
+        rpartition= -1
 
     try:
         M1_list  = np.array(f['data']['M_1'])
@@ -355,13 +357,13 @@ def load_particles_from_file(fileID, which="initial"):
             p.xDM = np.zeros((N_DM, 3))
             p.vDM = np.zeros((N_DM, 3))
 
-    p.r_partition=rpartition
+    p.r_p=rpartition
 
-    
+
     return p
 
 
-def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_t = -1, alpha = 2, circular=0, r_soft = -1, r_partition=-1):
+def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_t = -1, alpha = 2, circular=0, r_soft = -1, r_p=-1):
     """
     Initialise a `particles` object which consists of a single BH surrounded by a DM halo.
 
@@ -374,7 +376,7 @@ def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_
         r_t (float)     : Smooth truncation radius of the spike. Default = -1 (no truncation)
         alpha (float)   : Power-law slope for truncating the outer parts of the spike. Default = 2
         circular (int)  : Set circular = 1 in order to initialise DM particles on circular orbits. Default is 0 (isotropic orbits).
-        r_partition: radius defining the inner set of particles to be placed on short time step
+        r_p (float): radius defining the inner set of particles to be placed on short time step
 
     Returns:
         p (particles)   : Set of particles
@@ -400,13 +402,13 @@ def single_BH(M_1, N_DM=0, rho_6=1e15*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_
     p = particles(M_1, M_2=0, N_DM=N_DM, M_DM=M_DM, dynamic_BH=False)
 
     if (N_DM > 0):
-        p.initialize_spike(rho_6, gamma_sp, r_max, r_t, alpha, circular, r_soft, r_partition)
+        p.initialize_spike(rho_6, gamma_sp, r_max, r_t, alpha, circular, r_soft, r_p)
 
     return p
 
 
 
-def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, dynamic_BH=True, rho_6=1e16*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_t = -1, alpha = 2, circular = 0, include_DM_mass=False, r_soft = -1, r_partition=-1):
+def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, dynamic_BH=True, rho_6=1e16*u.Msun/u.pc**3, gamma_sp=7/3, r_max=-1, r_t = -1, alpha = 2, circular = 0, include_DM_mass=False, r_soft = -1, r_p=-1):
     """
     Initialise a `particles` object which consists of a BH binary, which may be surrounded by a DM halo.
 
@@ -424,7 +426,7 @@ def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, dynamic_BH=True, rho_6=1
         alpha (float)   : Power-law slope for truncating the outer parts of the spike. Default = 2
         circular (int)  : Set circular = 1 in order to initialise DM particles on circular orbits. Default is 0 (isotropic orbits).
         include_DM_mass (bool): Set to True in order to include the enclosed DM mass in the calculation of the initial velocity (for a given a_i, e_i)
-        r_partition: radius defining the inner set of particles to be placed on short time step
+        r_p (float) : radius defining the inner set of particles to be placed on short time step. Default=-1 (no partition)
     Returns:
         p (particles)   : Set of particles
     """
@@ -471,6 +473,6 @@ def particles_in_binary(M_1, M_2, a_i, e_i=0.0, N_DM=0, dynamic_BH=True, rho_6=1
     p.vBH2[:] = np.atleast_2d([0.0, -v_i*(1-factor), 0])
 
     if (N_DM > 0):
-        p.initialize_spike(rho_6, gamma_sp, r_max, r_t, alpha, circular, r_soft, r_partition)
+        p.initialize_spike(rho_6, gamma_sp, r_max, r_t, alpha, circular, r_soft, r_p)
 
     return p
